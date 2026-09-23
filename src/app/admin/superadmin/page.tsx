@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { createUserAction } from './actions' // 👈 Importamos la Server Action
 
 interface Profile {
   id: string
@@ -231,45 +232,24 @@ export default function SuperAdminPage() {
           return
         }
 
-        const res = await fetch('/admin/create-user', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: adminEmail,
-            password: adminPassword,
-            full_name: fullName,
-            role,
-            is_active: isActive,
-            slug: uniqueSlug,
-            address,
-            city,
-            province,
-            phone,
-            instagram,
-            facebook,
-            google_maps_url: googleMapsUrl,
-            logo_url: logoUrl,
-            category,
-          }),
+        // Llamada directa a la Server Action en lugar de fetch
+        await createUserAction({
+          email: adminEmail,
+          password: adminPassword,
+          full_name: fullName,
+          role,
+          is_active: isActive,
+          slug: uniqueSlug,
+          address,
+          city,
+          province,
+          phone,
+          instagram,
+          facebook,
+          google_maps_url: googleMapsUrl,
+          logo_url: logoUrl,
+          category,
         })
-
-        const textResponse = await res.text()
-        let data
-
-        try {
-          data = JSON.parse(textResponse)
-        } catch (parseErr) {
-          console.error('El servidor devolvió este HTML/texto:', textResponse)
-          throw new Error(
-            `Respuesta no válida del servidor (${res.status}). Revisa la consola.`
-          )
-        }
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Ocurrió un error al crear el usuario')
-        }
 
         alert(`🎉 ¡Espacio y usuario creados con éxito! Slug asignado: /${uniqueSlug}`)
         resetForm()
@@ -559,6 +539,7 @@ export default function SuperAdminPage() {
           <span className="text-xs font-bold text-[#0D9488] bg-teal-50 px-3 py-1 rounded-lg border border-teal-100 self-start sm:self-auto">
             {filteredVenues.length} de {venues.length} espacios
           </span>
+
         </div>
 
         {/* Buscador */}
