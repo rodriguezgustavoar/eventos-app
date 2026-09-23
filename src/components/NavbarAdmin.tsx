@@ -15,11 +15,13 @@ export default function NavbarAdmin() {
   const [logoUrl, setLogoUrl] = useState<string>('')
   const [userRole, setUserRole] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  
+  // Estado para abrir/cerrar el menú en celulares
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     checkUserSession()
 
-    // Escuchar cambios de estado de autenticación (login, logout, etc.)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session?.user) {
@@ -40,6 +42,11 @@ export default function NavbarAdmin() {
     }
   }, [])
 
+  // Cerrar menú móvil al cambiar de ruta
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
   const checkUserSession = async () => {
     const {
       data: { session },
@@ -54,7 +61,6 @@ export default function NavbarAdmin() {
     setLoading(false)
   }
 
-  // Obtener nombre, logo y rol directamente desde la tabla 'profiles'
   const fetchVenueInfo = async (currentUser: any) => {
     const { data: profile } = await supabase
       .from('profiles')
@@ -62,17 +68,14 @@ export default function NavbarAdmin() {
       .eq('id', currentUser.id)
       .maybeSingle()
 
-    // 1. Asignar el rol obtenido de la BD
     if (profile?.role) {
       setUserRole(profile.role)
     }
 
-    // 2. Asignar la URL del logo de la empresa/pelotero
     if (profile?.logo_url) {
       setLogoUrl(profile.logo_url)
     }
 
-    // 3. Resolver el nombre a mostrar (Profile DB > Metadata > Prefix de Email)
     const metadataName =
       currentUser.user_metadata?.venue_name || currentUser.user_metadata?.full_name
 
@@ -91,12 +94,10 @@ export default function NavbarAdmin() {
     router.push('/login')
   }
 
-  // Si estamos en vistas públicas de Invitado o Portal del Evento, no mostrar la barra de navegación
   if (pathname.startsWith('/invitacion') || pathname.startsWith('/evento')) {
     return null
   }
 
-  // Si se está verificando la sesión o NO hay usuario activo, NO mostrar la barra de menú
   if (loading || !user) {
     return null
   }
@@ -108,7 +109,6 @@ export default function NavbarAdmin() {
     { href: '/admin/cuenta', label: 'Mi Cuenta' },
   ]
 
-  // Si el rol en la tabla profiles es 'admin', agrega la opción al menú
   if (userRole === 'admin') {
     navLinks.push({ href: '/admin/superadmin', label: 'Panel Admin' })
   }
@@ -116,8 +116,9 @@ export default function NavbarAdmin() {
   const displayName = venueName || 'Magic Kids'
 
   return (
-    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 antialiased">
+    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 antialiased">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        
         {/* Logo de la Empresa + Nombre del Pelotero */}
         <Link href="/admin" className="flex items-center gap-3 group">
           {logoUrl ? (
@@ -150,15 +151,15 @@ export default function NavbarAdmin() {
           </div>
         </Link>
 
-        {/* Links de Navegación */}
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Links de Navegación (Escritorio / Tablets) */}
+        <nav className="hidden md:flex items-center gap-2">
           {navLinks.map((link) => {
             const isActive = pathname === link.href
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-teal-50 text-teal-700 font-semibold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -166,12 +167,12 @@ export default function NavbarAdmin() {
               >
                 {link.label}
               </Link>
-            );
+            )
           })}
 
           <Link
             href="/evento/nuevo"
-            className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-3 sm:px-4 rounded-xl text-xs transition-all shadow-sm shadow-teal-600/20 active:scale-[0.99] ml-1"
+            className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-xl text-xs transition-all shadow-sm shadow-teal-600/20 active:scale-[0.99] ml-1"
           >
             + Crear
           </Link>
@@ -181,9 +182,8 @@ export default function NavbarAdmin() {
             className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-xs font-medium ml-1"
             title="Cerrar sesión"
           >
-            <span className="hidden sm:inline">Cerrar Sesión</span>
             <svg
-              className="w-4 h-4 sm:hidden"
+              className="w-4 h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -198,7 +198,65 @@ export default function NavbarAdmin() {
             </svg>
           </button>
         </nav>
+
+        {/* Botón Hamburguesa (Móvil) */}
+        <div className="flex items-center gap-2 md:hidden">
+          <Link
+            href="/evento/nuevo"
+            className="bg-teal-600 text-white font-medium py-1.5 px-3 rounded-lg text-xs shadow-sm"
+          >
+            + Crear
+          </Link>
+
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+            aria-label="Abrir menú"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* Menú Desplegable (Móvil) */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 space-y-1.5 shadow-lg animate-fadeIn">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-teal-50 text-teal-700 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between px-2">
+            <span className="text-xs text-slate-400 font-medium truncate max-w-[200px]">
+              {user.email}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 font-bold py-2 px-3 rounded-lg hover:bg-rose-50 transition-colors"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

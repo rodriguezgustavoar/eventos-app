@@ -197,17 +197,9 @@ export default function AdminDashboard() {
 
       {/* 1. Tabla de Próximos Eventos */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="font-bold text-[#1F2937] text-lg">Próximos Eventos</h2>
-            <p className="text-xs text-slate-400 font-medium">Mostrando los 5 eventos más cercanos a la fecha actual</p>
-          </div>
-          <button
-            onClick={() => router.push('/admin/agenda')}
-            className="py-2 px-3.5 bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm shadow-teal-600/20 active:scale-[0.99]"
-          >
-            ➕ Nueva Reserva
-          </button>
+        <div>
+          <h2 className="font-bold text-[#1F2937] text-lg">Próximos Eventos</h2>
+          <p className="text-xs text-slate-400 font-medium">Mostrando los 5 eventos más cercanos a la fecha actual</p>
         </div>
 
         {nextBookings.length === 0 ? (

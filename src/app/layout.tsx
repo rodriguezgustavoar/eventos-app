@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Pelotero Magic Kids',
+  title: 'Eventos App',
   description: 'Sistema de gestión de reservas e invitaciones digitales',
 }
 

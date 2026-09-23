@@ -10,7 +10,7 @@ export default function AccountPage() {
 
   // Datos de cuenta y rol
   const [userEmail, setUserEmail] = useState('')
-  const [userRole, setUserRole] = useState<'Cliente' | 'superAdmin'>('Cliente')
+  const [userRole, setUserRole] = useState<string>('user')
 
   // Datos del Salón / Pelotero
   const [fullName, setFullName] = useState('')
@@ -63,32 +63,27 @@ export default function AccountPage() {
 
     const cleanUrl = rawUrl.trim()
 
-    // 1. Si pegó el snippet <iframe> completo
     if (cleanUrl.includes('<iframe')) {
       const srcMatch = cleanUrl.match(/src=["']([^"']+)["']/)
       if (srcMatch && srcMatch[1]) return srcMatch[1]
     }
 
-    // 2. Si ya es una URL de incrustación (/embed)
     if (cleanUrl.includes('/embed')) {
       return cleanUrl
     }
 
-    // 3. Extraer el nombre del lugar de la ruta /place/Nombre+Lugar/
     const placeMatch = cleanUrl.match(/\/maps\/place\/([^/@]+)/)
     if (placeMatch && placeMatch[1]) {
       const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
       return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&output=embed`
     }
 
-    // 4. Si no hay /place/, extraer las coordenadas del centro del mapa (@lat,lng)
     const coordsMatch = cleanUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
     if (coordsMatch) {
       const [, lat, lng] = coordsMatch
       return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`
     }
 
-    // 5. Si es un texto plano o término de búsqueda simple
     return `https://maps.google.com/maps?q=${encodeURIComponent(cleanUrl)}&output=embed`
   }
 
@@ -103,11 +98,7 @@ export default function AccountPage() {
       const user = session.user
       setUserEmail(user.email || '')
 
-      // Determinar Rol
-      const roleFromMeta = user.user_metadata?.role || 'Cliente'
-      setUserRole(roleFromMeta === 'superAdmin' ? 'superAdmin' : 'Cliente')
-
-      // Cargar perfil desde la base de datos
+      // Cargar perfil desde la base de datos (tabla profiles) para obtener el rol real
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -115,6 +106,7 @@ export default function AccountPage() {
         .maybeSingle()
 
       if (profile) {
+        setUserRole(profile.role || 'user')
         setFullName(profile.full_name || user.user_metadata?.full_name || '')
         setPhone(profile.phone || user.user_metadata?.phone || '')
         setAddress(profile.address || user.user_metadata?.address || '')
@@ -126,7 +118,9 @@ export default function AccountPage() {
         setLogoUrl(profile.logo_url || '')
         setGallery(profile.gallery || [])
       } else {
-        // Respaldo desde metadata
+        // Respaldo desde metadata si no existe el registro en profiles
+        const roleFromMeta = user.user_metadata?.role || 'user'
+        setUserRole(roleFromMeta)
         setFullName(user.user_metadata?.full_name || '')
         setPhone(user.user_metadata?.phone || '')
         setAddress(user.user_metadata?.address || '')
@@ -329,14 +323,11 @@ export default function AccountPage() {
       logo_url: logoUrl,
     }
 
-    // 1. Actualizar metadata del usuario en Supabase Auth
-    const { error: authError } = await supabase.auth.updateUser({
+    await supabase.auth.updateUser({
       data: profilePayload,
     })
 
-    // 2. Actualizar o insertar en la tabla 'profiles'
-    const { error: dbError } = await supabase.from('profiles').upsert({
-      id: userId,
+    const { error: dbError } = await supabase.from('profiles').update({
       full_name: fullName,
       phone,
       address,
@@ -348,13 +339,13 @@ export default function AccountPage() {
       logo_url: logoUrl,
       gallery,
       updated_at: new Date().toISOString(),
-    })
+    }).eq('id', userId)
 
     setIsUpdatingProfile(false)
 
-    if (authError || dbError) {
+    if (dbError) {
       setMessage({
-        text: 'Error al actualizar los datos: ' + (authError?.message || dbError?.message),
+        text: 'Error al actualizar los datos: ' + dbError.message,
         type: 'error',
       })
     } else {
@@ -458,11 +449,11 @@ export default function AccountPage() {
               </label>
               <div className="flex items-center gap-1.5 h-9 px-3 bg-slate-200/60 border border-slate-300/60 rounded-xl">
                 <span className="text-xs">
-                  {userRole === 'superAdmin' ? '👑' : '🏢'}
+                  {userRole === 'admin' ? '⚡' : '👤'}
                 </span>
                 <span
-                  className={`text-xs font-black ${
-                    userRole === 'superAdmin' ? 'text-[#2563EB]' : 'text-slate-700'
+                  className={`text-xs font-black uppercase ${
+                    userRole === 'admin' ? 'text-[#0D9488]' : 'text-slate-700'
                   }`}
                 >
                   {userRole}
