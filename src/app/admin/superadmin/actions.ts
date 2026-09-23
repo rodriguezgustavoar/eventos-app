@@ -19,54 +19,58 @@ export async function createUserAction(formData: {
   category?: string
   is_active?: boolean
 }) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Faltan variables de entorno en el servidor')
-  }
+    if (!supabaseUrl || !serviceRoleKey) {
+      return { success: false, error: 'Faltan variables de entorno en el servidor' }
+    }
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-
-  // 1. Crear usuario en Auth
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: formData.email,
-    password: formData.password,
-    email_confirm: true,
-  })
-
-  if (authError) {
-    throw new Error(authError.message)
-  }
-
-  const userId = authData.user.id
-
-  // 2. Insertar en profiles
-  const { error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .upsert({
-      id: userId,
-      full_name: formData.full_name,
-      role: formData.role,
-      slug: formData.slug,
-      address: formData.address || '',
-      city: formData.city || '',
-      province: formData.province || '',
-      phone: formData.phone || '',
-      instagram: formData.instagram || '',
-      facebook: formData.facebook || '',
-      google_maps_url: formData.google_maps_url || '',
-      logo_url: formData.logo_url || '',
-      category: formData.category || 'pelotero',
-      is_active: formData.is_active ?? true,
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     })
 
-  if (profileError) {
-    await supabaseAdmin.auth.admin.deleteUser(userId)
-    throw new Error(`Error en tabla profiles: ${profileError.message}`)
-  }
+    // 1. Crear usuario en Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: formData.email,
+      password: formData.password,
+      email_confirm: true,
+    })
 
-  return { success: true, userId }
+    if (authError) {
+      return { success: false, error: authError.message }
+    }
+
+    const userId = authData.user.id
+
+    // 2. Insertar en profiles
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .upsert({
+        id: userId,
+        full_name: formData.full_name,
+        role: formData.role,
+        slug: formData.slug,
+        address: formData.address || '',
+        city: formData.city || '',
+        province: formData.province || '',
+        phone: formData.phone || '',
+        instagram: formData.instagram || '',
+        facebook: formData.facebook || '',
+        google_maps_url: formData.google_maps_url || '',
+        logo_url: formData.logo_url || '',
+        category: formData.category || 'pelotero',
+        is_active: formData.is_active ?? true,
+      })
+
+    if (profileError) {
+      await supabaseAdmin.auth.admin.deleteUser(userId)
+      return { success: false, error: `Error en tabla profiles: ${profileError.message}` }
+    }
+
+    return { success: true, userId }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error interno en el servidor' }
+  }
 }

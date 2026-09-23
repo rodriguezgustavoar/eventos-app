@@ -232,28 +232,34 @@ export default function SuperAdminPage() {
           return
         }
 
-        // Llamada directa a la Server Action en lugar de fetch
-        await createUserAction({
-          email: adminEmail,
-          password: adminPassword,
-          full_name: fullName,
-          role,
-          is_active: isActive,
-          slug: uniqueSlug,
-          address,
-          city,
-          province,
-          phone,
-          instagram,
-          facebook,
-          google_maps_url: googleMapsUrl,
-          logo_url: logoUrl,
-          category,
-        })
+        // En lugar de usar try/catch directo con la Server Action que lanza excepciones:
+const result = await createUserAction({
+  email: adminEmail,
+  password: adminPassword,
+  full_name: fullName,
+  role,
+  is_active: isActive,
+  slug: uniqueSlug,
+  address,
+  city,
+  province,
+  phone,
+  instagram,
+  facebook,
+  google_maps_url: googleMapsUrl,
+  logo_url: logoUrl,
+  category,
+})
 
-        alert(`🎉 ¡Espacio y usuario creados con éxito! Slug asignado: /${uniqueSlug}`)
-        resetForm()
-        fetchVenues()
+if (!result.success) {
+  alert('❌ Error: ' + result.error)
+  setSubmitting(false)
+  return
+}
+
+alert(`🎉 ¡Espacio y usuario creados con éxito! Slug asignado: /${uniqueSlug}`)
+resetForm()
+fetchVenues()
       } catch (err: any) {
         alert('❌ Error: ' + err.message)
       } finally {
