@@ -167,6 +167,15 @@ export default function AdminDashboard() {
     bookingsByDate[dateKey].push(b)
   })
 
+  // Ordenar los eventos de cada día cronológicamente (de más temprano a más tardío)
+  Object.keys(bookingsByDate).forEach((dateKey) => {
+    bookingsByDate[dateKey].sort((a, b) => {
+      const timeA = a.start_time || '00:00'
+      const timeB = b.start_time || '00:00'
+      return timeA.localeCompare(timeB)
+    })
+  })
+
   // Días en el mes seleccionado
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const firstDayIndex = new Date(year, month, 1).getDay()
@@ -329,7 +338,13 @@ export default function AdminDashboard() {
                   key={dayNum}
                   onClick={() => {
                     if (hasEvents) {
-                      setSelectedDayEvents({ dateStr: fullDateStr, list: dayEvents })
+                      // Se pasa la lista ordenada por start_time
+                      const sortedEvents = [...dayEvents].sort((a, b) => {
+                        const timeA = a.start_time || '00:00'
+                        const timeB = b.start_time || '00:00'
+                        return timeA.localeCompare(timeB)
+                      })
+                      setSelectedDayEvents({ dateStr: fullDateStr, list: sortedEvents })
                     } else {
                       setSelectedDayEvents(null)
                     }
@@ -365,7 +380,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Desplegable de Eventos del Día Seleccionado */}
+          {/* Desplegable de Eventos del Día Seleccionado (Ordenados de más temprano a más tardío) */}
           {selectedDayEvents && (
             <div className="mt-4 p-4 bg-teal-50/60 border border-teal-100 rounded-2xl space-y-3">
               <div className="flex justify-between items-center">
@@ -388,7 +403,7 @@ export default function AdminDashboard() {
                     <div>
                       <p className="font-bold text-[#1F2937]">{ev.child_name || 'Sin Nombre'}</p>
                       <p className="text-slate-500 text-[11px]">
-                        ⏰ {ev.start_time || '--:--'} hs a {ev.end_time || '--:--'} hs
+                        ⏰ {ev.start_time?.slice(0, 5) || '--:--'} hs a {ev.end_time?.slice(0, 5) || '--:--'} hs
                       </p>
                     </div>
                     <a

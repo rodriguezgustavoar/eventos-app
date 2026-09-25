@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-// --- COMPONENTE DE GLOBOS ANIMADOS (OPCIÓN 1) ---
+// --- COMPONENTE DE GLOBOS ANIMADOS ---
 interface Balloon {
   id: number
   left: number
@@ -118,8 +118,10 @@ interface Booking {
   end_time: string
   theme: string
   profiles?: {
+    full_name?: string
     business_name?: string
     name?: string
+    phone?: string
     address?: string
     google_maps_url?: string
     logo_url?: string
@@ -269,6 +271,10 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
 
   const salonLogo = booking.profiles?.logo_url
   const salonGallery = booking.profiles?.gallery || []
+  
+  // Nombre dinámico y teléfono del Pelotero
+  const venueName = booking.profiles?.full_name || booking.profiles?.business_name || booking.profiles?.name || 'Salón de Fiestas'
+  const venuePhone = booking.profiles?.phone
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 p-4 flex justify-center items-center relative overflow-hidden">
@@ -469,22 +475,28 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-start space-x-3">
             <span className="text-2xl">🏰</span>
             <div className="flex-1">
               <p className="text-xs text-gray-500 font-semibold uppercase">Lugar</p>
-              <p className="text-sm font-bold text-gray-800">
-                {booking.profiles?.business_name || booking.profiles?.name || 'Salón de Fiestas'}
-              </p>
+              <p className="text-sm font-bold text-gray-900">{venueName}</p>
+              
               {booking.profiles?.address && (
-                <p className="text-xs text-gray-600">{booking.profiles.address}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{booking.profiles.address}</p>
               )}
+
+              {venuePhone && (
+                <p className="text-xs text-gray-600 mt-1">
+                  📞 <a href={`tel:${venuePhone}`} className="text-purple-700 font-semibold hover:underline">{venuePhone}</a>
+                </p>
+              )}
+
               {booking.profiles?.google_maps_url && (
                 <a
                   href={booking.profiles.google_maps_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-purple-600 font-bold hover:underline mt-1 inline-block"
+                  className="text-xs text-purple-600 font-bold hover:underline mt-1.5 inline-block"
                 >
                   📍 Ver cómo llegar en Google Maps ➔
                 </a>
@@ -517,7 +529,7 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                   placeholder="Ej: Familia Gómez"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:outline-none shadow-sm"
                 />
               </div>
 
@@ -527,10 +539,10 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                   <select
                     value={adultsCount}
                     onChange={(e) => setAdultsCount(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none shadow-sm"
                   >
                     {[0, 1, 2, 3, 4, 5, 6].map((num) => (
-                      <option key={num} value={num}>
+                      <option key={num} value={num} className="text-gray-900 bg-white">
                         {num} {num === 1 ? 'Adulto' : 'Adultos'}
                       </option>
                     ))}
@@ -542,10 +554,10 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                   <select
                     value={childrenCount}
                     onChange={(e) => setChildrenCount(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none shadow-sm"
                   >
                     {[0, 1, 2, 3, 4, 5, 6].map((num) => (
-                      <option key={num} value={num}>
+                      <option key={num} value={num} className="text-gray-900 bg-white">
                         {num} {num === 1 ? 'Niño' : 'Niños'}
                       </option>
                     ))}
@@ -562,7 +574,7 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                   placeholder="Ej: 1 Celíaco, 1 Vegetariano"
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:outline-none shadow-sm"
                 />
               </div>
 

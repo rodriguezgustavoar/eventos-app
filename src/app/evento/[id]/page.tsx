@@ -30,6 +30,41 @@ interface RSVP {
   created_at: string
 }
 
+interface FixedShift {
+  id: string
+  name: string
+  start_time: string
+  end_time: string
+}
+
+interface PricingScheme {
+  id: string
+  name: string
+  days: string[]
+  includes_holidays: boolean
+  base_price: number
+  extra_hour_price: number
+  half_extra_hour_price: number
+}
+
+interface ShiftSettings {
+  turn_buffer_minutes: number
+  shift_duration_minutes: number
+  allow_extra_hours: boolean
+  fixed_shifts: FixedShift[]
+  pricing_schemes: PricingScheme[]
+}
+
+const DAY_MAP: Record<number, string> = {
+  0: 'dom',
+  1: 'lun',
+  2: 'mar',
+  3: 'mie',
+  4: 'jue',
+  5: 'vie',
+  6: 'sab',
+}
+
 export default function PortalFamiliaPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const bookingId = resolvedParams.id
@@ -55,47 +90,189 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
   const [copied, setCopied] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
+  // Configuración de turnos y precios del salón
+  const [shiftSettings, setShiftSettings] = useState<ShiftSettings | null>(null)
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
+  const [isHoliday, setIsHoliday] = useState<boolean>(false)
+  const [extraMinutes, setExtraMinutes] = useState<number>(0)
+  const [currentSchemeName, setCurrentSchemeName] = useState<string>('')
+
   const supabase = createClient()
 
   useEffect(() => {
-    if (!isNew) {
-      fetchData()
-    }
+    loadInitialData()
   }, [bookingId, isNew])
 
-  const fetchData = async () => {
+  const loadInitialData = async () => {
     setLoading(true)
     setNotFound(false)
 
-    const { data: bookingData, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', bookingId)
-      .single()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (error || !bookingData) {
-      setNotFound(true)
-      setLoading(false)
-      return
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('shift_settings, turn_buffer_minutes')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile?.shift_settings) {
+        setShiftSettings(profile.shift_settings)
+      }
     }
 
-    setBooking(bookingData)
+    if (!isNew) {
+      const { data: bookingData, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .single()
 
-    const { data: rsvpData } = await supabase
-      .from('rsvps')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .order('created_at', { ascending: false })
+      if (error || !bookingData) {
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
 
-    if (rsvpData) {
-      setRsvps(rsvpData)
+      setBooking(bookingData)
+
+      const { data: rsvpData } = await supabase
+        .from('rsvps')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+
+      if (rsvpData) {
+        setRsvps(rsvpData)
+      }
     }
 
     setLoading(false)
   }
 
-  // Verificar superposición de horarios dentro del mismo profile_id
-  const checkTimeOverlap = async (date: string, startTime: string, endTime: string, userId: string, currentId?: string) => {
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0
+    const [hours, minutes] = timeStr.slice(0, 5).split(':').map(Number)
+    return hours * 60 + minutes
+  }
+
+  const minutesToTime = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60) % 24
+    const mins = totalMinutes % 60
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+  }
+
+  const recalculateEventDetails = (
+    dateStr: string,
+    holidayFlag: boolean,
+    shiftId: string | null,
+    addedMinutes: number,
+    manualStart?: string
+  ) => {
+    if (!shiftSettings || !shiftSettings.pricing_schemes || shiftSettings.pricing_schemes.length === 0) {
+      return
+    }
+
+    let matchingScheme: PricingScheme | undefined
+
+    if (holidayFlag) {
+      matchingScheme = shiftSettings.pricing_schemes.find((s) => s.includes_holidays)
+    }
+
+    if (!matchingScheme && dateStr) {
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const dateObj = new Date(year, month - 1, day)
+      const dayCode = DAY_MAP[dateObj.getDay()]
+
+      matchingScheme = shiftSettings.pricing_schemes.find((s) => s.days.includes(dayCode))
+    }
+
+    if (!matchingScheme) {
+      matchingScheme = shiftSettings.pricing_schemes[0]
+    }
+
+    if (!matchingScheme) return
+
+    setCurrentSchemeName(matchingScheme.name)
+    const basePrice = Number(matchingScheme.base_price) || 0
+
+    let targetStart = manualStart !== undefined ? manualStart : booking.start_time
+    let targetEnd = booking.end_time
+
+    if (shiftId && shiftSettings.fixed_shifts) {
+      const shift = shiftSettings.fixed_shifts.find((s) => s.id === shiftId)
+      if (shift) {
+        targetStart = shift.start_time
+        const baseShiftDuration = timeToMinutes(shift.end_time) - timeToMinutes(shift.start_time)
+        const newEndMins = timeToMinutes(targetStart) + baseShiftDuration + addedMinutes
+        targetEnd = minutesToTime(newEndMins)
+      }
+    } else if (manualStart !== undefined || addedMinutes >= 0) {
+      const globalDuration = Number(shiftSettings.shift_duration_minutes) || 180
+      if (targetStart) {
+        const newEndMins = timeToMinutes(targetStart) + globalDuration + addedMinutes
+        targetEnd = minutesToTime(newEndMins)
+      }
+    }
+
+    const fullHours = Math.floor(addedMinutes / 60)
+    const halfHours = Math.floor((addedMinutes % 60) / 30)
+
+    const extraCost =
+      (fullHours * (Number(matchingScheme.extra_hour_price) || 0)) +
+      (halfHours * (Number(matchingScheme.half_extra_hour_price) || 0))
+
+    const totalCalculated = basePrice + extraCost
+
+    setBooking((prev) => ({
+      ...prev,
+      start_time: targetStart,
+      end_time: targetEnd,
+      total_price: totalCalculated > 0 ? totalCalculated : prev.total_price
+    }))
+  }
+
+  const handleDateChange = (newDate: string) => {
+    setBooking((prev) => ({ ...prev, event_date: newDate }))
+    recalculateEventDetails(newDate, isHoliday, selectedShiftId, extraMinutes)
+  }
+
+  const handleHolidayToggle = (checked: boolean) => {
+    setIsHoliday(checked)
+    recalculateEventDetails(booking.event_date, checked, selectedShiftId, extraMinutes)
+  }
+
+  const handleSelectShift = (shift: FixedShift) => {
+    setSelectedShiftId(shift.id)
+    setExtraMinutes(0)
+    recalculateEventDetails(booking.event_date, isHoliday, shift.id, 0, shift.start_time)
+  }
+
+  const handleExtraMinutesChange = (addedMins: number) => {
+    setExtraMinutes(addedMins)
+    recalculateEventDetails(booking.event_date, isHoliday, selectedShiftId, addedMins)
+  }
+
+  const handleStartTimeChange = (newStart: string) => {
+    setSelectedShiftId(null)
+    recalculateEventDetails(booking.event_date, isHoliday, null, extraMinutes, newStart)
+  }
+
+  const checkTimeOverlap = async (
+    date: string, 
+    startTime: string, 
+    endTime: string, 
+    userId: string, 
+    currentId?: string
+  ) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('turn_buffer_minutes')
+      .eq('id', userId)
+      .maybeSingle()
+
+    const bufferMinutes = profile?.turn_buffer_minutes ?? 30
+
     let query = supabase
       .from('bookings')
       .select('id, start_time, end_time, child_name')
@@ -108,57 +285,68 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
 
     const { data: existingBookings, error } = await query
 
-    if (error) {
-      console.error('Error verificando disponibilidad:', error)
+    if (error || !existingBookings || existingBookings.length === 0) {
       return { hasOverlap: false }
     }
 
-    if (!existingBookings || existingBookings.length === 0) {
-      return { hasOverlap: false }
-    }
+    const newStartMins = timeToMinutes(startTime)
+    const newEndMins = timeToMinutes(endTime)
 
-    const conflictingBooking = existingBookings.find((b) => {
-      const bStart = b.start_time.slice(0, 5)
-      const bEnd = b.end_time.slice(0, 5)
-      const newStart = startTime.slice(0, 5)
-      const newEnd = endTime.slice(0, 5)
+    let conflictMessage = ''
 
-      return newStart < bEnd && newEnd > bStart
+    const hasConflict = existingBookings.some((b) => {
+      const bStartMins = timeToMinutes(b.start_time)
+      const bEndMins = timeToMinutes(b.end_time)
+
+      const isOverlapping = newStartMins < (bEndMins + bufferMinutes) && bStartMins < (newEndMins + bufferMinutes)
+
+      if (isOverlapping) {
+        const busyRangeStr = `${b.start_time.slice(0, 5)} a ${b.end_time.slice(0, 5)} hs`
+        const bufferInfoStr = bufferMinutes > 0 
+          ? ` (se requieren ${bufferMinutes} min libres entre turnos)` 
+          : ''
+
+        conflictMessage = `Cumple de ${b.child_name} (${busyRangeStr})${bufferInfoStr}`
+      }
+
+      return isOverlapping
     })
 
-    if (conflictingBooking) {
+    if (hasConflict) {
       return {
         hasOverlap: true,
-        conflictingName: conflictingBooking.child_name,
-        conflictingRange: `${conflictingBooking.start_time.slice(0, 5)} - ${conflictingBooking.end_time.slice(0, 5)}`
+        conflictDetails: conflictMessage,
       }
     }
 
     return { hasOverlap: false }
   }
 
-  // Guardar evento con validación
   const handleSaveBooking = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (booking.start_time >= booking.end_time) {
+    const startMins = timeToMinutes(booking.start_time)
+    let endMins = timeToMinutes(booking.end_time)
+
+    if (endMins <= startMins) {
+      endMins += 24 * 60 
+    }
+
+    if (startMins >= endMins) {
       alert('La hora de fin debe ser posterior a la hora de inicio.')
       return
     }
 
     setSaving(true)
 
-    // 1. Obtener el usuario autenticado
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       setSaving(false)
       alert('No hay una sesión activa para asociar la reserva.')
-      console.error('No hay un usuario autenticado para asociar la reserva.')
       return
     }
 
-    // 2. Verificación de superposición de horarios
     const overlapCheck = await checkTimeOverlap(
       booking.event_date,
       booking.start_time,
@@ -170,12 +358,13 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
     if (overlapCheck.hasOverlap) {
       setSaving(false)
       alert(
-        `⚠️ ¡Horario ocupado!\nYa existe una reserva para esa fecha en el rango ${overlapCheck.conflictingRange} (Cumple de ${overlapCheck.conflictingName}).`
+        `⚠️ ¡Horario o tiempo libre entre turnos ocupado!\n\nExiste un conflicto con:\n• ${overlapCheck.conflictDetails}\n\nPor favor, elige otro horario que respete el tiempo de limpieza.`
       )
       return
     }
 
-    // 3. Crear el payload con profile_id
+    const depositAmount = Number(booking.deposit_paid) || 0
+
     const payload = {
       profile_id: user.id,
       child_name: booking.child_name,
@@ -187,7 +376,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
       end_time: booking.end_time,
       theme: booking.theme,
       total_price: Number(booking.total_price) || 0,
-      deposit_paid: Number(booking.deposit_paid) || 0
+      deposit_paid: depositAmount
     }
 
     if (isNew) {
@@ -197,19 +386,34 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
         .select()
         .single()
 
-      setSaving(false)
-
       if (error) {
+        setSaving(false)
         alert('Error al crear el evento: ' + error.message)
-      } else if (data) {
-        alert('🎉 ¡Evento creado con éxito!')
-        
-        // Abre el nuevo evento en una pestaña nueva
-        window.open(`/evento/${data.id}`, '_blank')
-        
-        // Redirige la pestaña actual a /admin
-        router.push('/admin')
+        return
       }
+
+      // Registro explícito del pago inicial en la tabla payments
+      if (data && depositAmount > 0) {
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert([
+            {
+              booking_id: data.id,
+              amount: depositAmount,
+            }
+          ])
+
+        if (paymentError) {
+          console.error('Error detallado al registrar el pago inicial en payments:', paymentError)
+          alert('⚠️ El evento se creó, pero hubo un error al guardar el desglose en la tabla payments: ' + paymentError.message)
+        }
+      }
+
+      setSaving(false)
+      alert('🎉 ¡Evento creado con éxito!')
+      window.open(`/evento/${data.id}`, '_blank')
+      router.push('/admin')
+
     } else {
       const { error } = await supabase
         .from('bookings')
@@ -284,7 +488,104 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
             </p>
           </div>
 
-          <form onSubmit={handleSaveBooking} className="space-y-4">
+          <form onSubmit={handleSaveBooking} className="space-y-5">
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-3">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <label className="block text-xs font-bold text-gray-700">
+                  📅 Fecha del Evento y Tarifas
+                </label>
+
+                <label className="inline-flex items-center gap-1.5 cursor-pointer bg-white px-3 py-1 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 shadow-sm">
+                  <input
+                    type="checkbox"
+                    checked={isHoliday}
+                    onChange={(e) => handleHolidayToggle(e.target.checked)}
+                    className="rounded text-teal-600 focus:ring-teal-500"
+                  />
+                  🎉 Es Día Feriado
+                </label>
+              </div>
+
+              <input
+                type="date"
+                required
+                value={booking.event_date}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-semibold"
+              />
+
+              {currentSchemeName && (
+                <p className="text-[11px] font-bold text-teal-700 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-100 flex items-center gap-1.5">
+                  <span>💡 Tarifa detectada:</span>
+                  <span className="underline">{currentSchemeName}</span>
+                </p>
+              )}
+            </div>
+
+            {shiftSettings && shiftSettings.fixed_shifts && shiftSettings.fixed_shifts.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-700">
+                  📌 Seleccionar Turno Predefinido
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {shiftSettings.fixed_shifts.map((shift) => {
+                    const isSelected = selectedShiftId === shift.id
+                    return (
+                      <button
+                        key={shift.id}
+                        type="button"
+                        onClick={() => handleSelectShift(shift)}
+                        className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-md ring-2 ring-teal-200'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="text-xs font-black">{shift.name}</span>
+                        <span className={`text-[11px] font-medium mt-1 ${isSelected ? 'text-teal-100' : 'text-gray-500'}`}>
+                          ⏰ {shift.start_time} a {shift.end_time} hs
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {shiftSettings?.allow_extra_hours && (
+              <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-100 space-y-2">
+                <label className="block text-xs font-bold text-amber-900">
+                  ⏳ Tiempo Extra Adicional (Extender Turno)
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[0, 30, 60, 90, 120, 180].map((mins) => {
+                    const active = extraMinutes === mins
+                    const label = 
+                      mins === 0 ? 'Sin extra' :
+                      mins === 30 ? '+ 30 min' :
+                      mins === 60 ? '+ 1 hora' :
+                      mins === 90 ? '+ 1h 30m' :
+                      mins === 120 ? '+ 2 horas' : '+ 3 horas'
+
+                    return (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => handleExtraMinutesChange(mins)}
+                        className={`py-1.5 px-3 rounded-xl text-xs font-bold border transition-all ${
+                          active
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                            : 'bg-white text-amber-900 border-amber-200 hover:bg-amber-100'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Nombre del Cumpleañero/a</label>
@@ -335,17 +636,6 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Fecha del Evento</label>
-                <input
-                  type="date"
-                  required
-                  value={booking.event_date}
-                  onChange={(e) => setBooking({ ...booking, event_date: e.target.value })}
-                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                />
-              </div>
-
-              <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Temática</label>
                 <input
                   type="text"
@@ -356,36 +646,48 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Hora Inicio</label>
-                <input
-                  type="time"
-                  required
-                  value={booking.start_time}
-                  onChange={(e) => setBooking({ ...booking, start_time: e.target.value })}
-                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Hora Inicio</label>
+                  <input
+                    type="time"
+                    required
+                    value={booking.start_time}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-bold"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Hora Fin</label>
+                    <span className="text-[9px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-100">
+                      Auto
+                    </span>
+                  </div>
+                  <input
+                    type="time"
+                    required
+                    readOnly
+                    value={booking.end_time}
+                    className="w-full text-sm p-3 border border-teal-200 rounded-xl bg-teal-50/50 font-black text-teal-900 cursor-not-allowed shadow-inner"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Hora Fin</label>
-                <input
-                  type="time"
-                  required
-                  value={booking.end_time}
-                  onChange={(e) => setBooking({ ...booking, end_time: e.target.value })}
-                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Valor Total ($)</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-bold text-gray-700">Valor Total Calculado ($)</label>
+                  <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">
+                    Automático
+                  </span>
+                </div>
                 <input
                   type="number"
+                  readOnly
                   value={booking.total_price}
-                  onChange={(e) => setBooking({ ...booking, total_price: e.target.value })}
-                  placeholder="Ej: 150000"
-                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  placeholder="Se calcula automáticamente"
+                  className="w-full text-sm p-3 border border-teal-200 rounded-xl bg-teal-50/50 font-black text-teal-900 cursor-not-allowed shadow-inner"
                 />
               </div>
 
@@ -396,7 +698,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
                   value={booking.deposit_paid}
                   onChange={(e) => setBooking({ ...booking, deposit_paid: e.target.value })}
                   placeholder="Ej: 50000"
-                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  className="w-full text-sm p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-bold text-teal-800"
                 />
               </div>
             </div>
@@ -404,7 +706,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-sm transition-all disabled:opacity-50"
+              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-sm transition-all disabled:opacity-50 mt-2"
             >
               {saving ? 'Verificando y Guardando...' : '🎉 Guardar y Crear Fiesta'}
             </button>
