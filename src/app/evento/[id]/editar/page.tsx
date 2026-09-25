@@ -93,20 +93,26 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     setLoading(true)
     setNotFound(false)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    // Validar sesión activa antes de cargar nada
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('shift_settings, turn_buffer_minutes')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (profile?.shift_settings) {
-        setShiftSettings(profile.shift_settings)
-      }
+    if (authError || !user) {
+      router.replace('/login') // Redirige automáticamente al login si no hay sesión
+      return
     }
 
+    // Cargar configuración de turnos del perfil del usuario
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('shift_settings, turn_buffer_minutes')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profile?.shift_settings) {
+      setShiftSettings(profile.shift_settings)
+    }
+
+    // Cargar los datos del evento
     const { data: bookingData, error } = await supabase
       .from('bookings')
       .select('*')
@@ -299,17 +305,16 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     e.preventDefault()
 
     const startMins = timeToMinutes(booking.start_time)
-let endMins = timeToMinutes(booking.end_time)
+    let endMins = timeToMinutes(booking.end_time)
 
-// Si la hora de fin es menor o igual a la de inicio, asumimos que cruza la medianoche (día siguiente)
-if (endMins <= startMins) {
-  endMins += 24 * 60 // Se le suman 1440 minutos (24 horas)
-}
+    if (endMins <= startMins) {
+      endMins += 24 * 60 
+    }
 
-if (startMins >= endMins) {
-  alert('La hora de fin debe ser posterior a la hora de inicio.')
-  return
-}
+    if (startMins >= endMins) {
+      alert('La hora de fin debe ser posterior a la hora de inicio.')
+      return
+    }
 
     setSaving(true)
 
@@ -317,7 +322,7 @@ if (startMins >= endMins) {
 
     if (!user) {
       setSaving(false)
-      alert('No hay una sesión activa.')
+      router.replace('/login')
       return
     }
 
