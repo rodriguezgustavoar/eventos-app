@@ -3,10 +3,10 @@ import Image from 'next/image'
 import { createClient } from '@supabase/supabase-js'
 
 export default async function ClientesPage() {
-  // Inicializamos el cliente de Supabase
+  // Inicializamos el cliente de Supabase asegurando las variables con !
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
   // Consulta real a la tabla 'profiles' filtrando el rol 'user'
@@ -87,7 +87,7 @@ export default async function ClientesPage() {
         ) : (
           /* Grid de Tarjetas de Clientes */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listaClientes.map((cliente) => (
+            {listaClientes.map((cliente: any) => (
               <div 
                 key={cliente.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-pink-200 transition-all flex flex-col justify-between"

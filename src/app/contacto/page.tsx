@@ -14,13 +14,12 @@ export default function ContactoPage() {
     mensaje: ''
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCargando(true);
 
     try {
-      // Reemplaza "https://formspree.io/f/TU_ENDPOINT_AQUI" con el endpoint real de tu cuenta de Formspree
-      const response = await fetch("https://formspree.io/f/maenaqpd", {
+      const response = await fetch("https://formspree.io/f/TU_ENDPOINT_AQUI", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
