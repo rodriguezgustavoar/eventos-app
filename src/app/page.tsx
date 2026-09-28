@@ -1,54 +1,151 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 antialiased">
-      {/* Encabezado / Branding */}
-      <header className="pt-8 text-center max-w-sm mx-auto">
-        <div className="inline-flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-teal-600/10 text-teal-600 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">
-            EventosApp
-          </span>
+    <div className="min-h-screen bg-white flex flex-col justify-between antialiased">
+      
+      {/* BARRA DE MENÚ SUPERIOR (NAVBAR) */}
+      <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+          
+          {/* Logo a la izquierda */}
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="Festejamos Logo"
+              width={160}
+              height={55}
+              className="object-contain"
+              priority
+            />
+          </Link>
+
+          {/* Opciones del menú a la derecha */}
+          <nav className="flex items-center gap-8">
+            <Link href="/" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors">
+              Inicio
+            </Link>
+            <Link href="/clientes" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors">
+              Clientes
+            </Link>
+            <Link href="/contacto" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors">
+              Contacto
+            </Link>
+            
+            {/* Botón de Ingresar */}
+            <Link
+              href="/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-pink-500 text-white text-sm font-semibold rounded-xl hover:opacity-95 transition-all shadow-md shadow-pink-500/20 active:scale-[0.98]"
+            >
+              Ingresar
+            </Link>
+          </nav>
+
         </div>
-        <p className="text-slate-500 text-sm leading-relaxed">
-          Tu agenda de eventos, salones y proveedores en un solo lugar.
-        </p>
       </header>
 
-      {/* Ilustración / Tarjeta destacada */}
-      <main className="my-auto">
-        <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 max-w-sm mx-auto text-center space-y-5">
-          <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center mx-auto border border-teal-100/60">
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-            </svg>
-          </div>
-          
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Organizá tu próximo evento
-            </h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              Encontrá salones, catering, animación y gestioná todos tus recordatorios de forma sencilla.
+      {/* Sección Central: Funcionalidades */}
+      <main className="max-w-6xl mx-auto w-full px-6 my-12 space-y-12 flex-grow">
+
+        {/* SECCIÓN DE FUNCIONALIDADES */}
+        <section className="space-y-8">
+          <div className="text-center space-y-2">
+            <h3 className="text-3xl font-extrabold text-[#0B2545]">
+              Todo lo que podés hacer con Festejamos
+            </h3>
+            <p className="text-sm text-slate-500">
+              Herramientas diseñadas para que cada celebración sea inolvidable.
             </p>
           </div>
-        </div>
+
+          {/* Grid configurado a 4 columnas con imágenes en cada tarjeta */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Tarjeta 1: Agenda y Turnos */}
+            <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col justify-between">
+              <div className="relative h-36 w-full bg-slate-100">
+                <Image
+                  src="/agenda.jpg"
+                  alt="Agenda y Turnos"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-5 space-y-2">
+                <h4 className="font-bold text-[#0B2545] text-base">Agenda y Turnos</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Reservá fechas y gestioná los turnos de tus clientes.
+                </p>
+              </div>
+            </div>
+
+            {/* Tarjeta 2: Control de Eventos */}
+            <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-pink-200 transition-all flex flex-col justify-between">
+              <div className="relative h-36 w-full bg-slate-100">
+                <Image
+                  src="/eventocreado.jpg"
+                  alt="Control de Eventos"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-5 space-y-2">
+                <h4 className="font-bold text-[#0B2545] text-base">Control de Eventos</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tus clientes podrán gestionar sus eventos, viendo detalles e invitados confirmados.
+                </p>
+              </div>
+            </div>
+
+            {/* Tarjeta 3: Precios Claros */}
+            <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-amber-200 transition-all flex flex-col justify-between">
+              <div className="relative h-36 w-full bg-slate-100">
+                <Image
+                  src="/turnostarifas.jpg"
+                  alt="Precios Claros"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-5 space-y-2">
+                <h4 className="font-bold text-[#0B2545] text-base">Precios Claros</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Defini turnos y tarifas según días, feriados, o como lo quieras organizar.
+                </p>
+              </div>
+            </div>
+
+            {/* Tarjeta 4: Invitaciones */}
+            <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-teal-200 transition-all flex flex-col justify-between">
+              <div className="relative h-36 w-full bg-slate-100">
+                <Image
+                  src="/invitacion.jpg"
+                  alt="Invitaciones Digitales"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-5 space-y-2">
+                <h4 className="font-bold text-[#0B2545] text-base">Invitaciones</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Enviá invitaciones y gestioná confirmaciones en tiempo real.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
       </main>
 
-      {/* Botón de acción principal */}
-      <footer className="space-y-3 max-w-sm w-full mx-auto pb-6">
-        <Link
-          href="/login"
-          className="w-full block text-center py-3.5 bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 transition-all shadow-md shadow-teal-600/20 active:scale-[0.99]"
-        >
-          Ingresar o Registrarse
-        </Link>
+      {/* Pie de página sencillo */}
+      <footer className="w-full border-t border-slate-100 py-6 text-center text-xs text-slate-400">
+        <p>© {new Date().getFullYear()} Festejamos. Todos los derechos reservados.</p>
       </footer>
+
     </div>
   )
 }

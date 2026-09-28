@@ -43,8 +43,8 @@ interface ShiftSettings {
 export default function AccountPage() {
   const [loading, setLoading] = useState(true)
 
-  // Estado para la pestaña activa
-  const [activeTab, setActiveTab] = useState<'info' | 'shifts'>('info')
+  // Estado para la pestaña activa ('info' | 'shifts' | 'password')
+  const [activeTab, setActiveTab] = useState<'info' | 'shifts' | 'password'>('info')
 
   // Datos de cuenta y rol
   const [userEmail, setUserEmail] = useState('')
@@ -222,13 +222,11 @@ export default function AccountPage() {
     setLoading(false)
   }
 
-  // --- UTILIDAD PARA CONVERTIR HORA A MINUTOS ---
   const timeToMinutes = (timeStr: string) => {
     const [h, m] = timeStr.split(':').map(Number)
     return h * 60 + m
   }
 
-  // --- UTILIDAD PARA CALCULAR HORA FIN AUTOMÁTICAMENTE ---
   const calculateEndTime = (startTime: string, durationMinutes: number) => {
     if (!startTime) return '00:00'
     const totalMins = timeToMinutes(startTime) + Number(durationMinutes)
@@ -237,14 +235,11 @@ export default function AccountPage() {
     return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
   }
 
-  // --- MANEJO DE TURNOS FIJOS ---
   const handleAddShift = () => {
-    // Buscar una hora de inicio sugerida que no se repita
     let defaultStart = '16:00'
     const existingStarts = shiftSettings.fixed_shifts.map((s) => s.start_time)
     
     if (existingStarts.includes(defaultStart)) {
-      // Intentar encontrar otra hora que no exista
       for (let h = 8; h <= 22; h += 3) {
         const candidate = `${String(h).padStart(2, '0')}:00`
         if (!existingStarts.includes(candidate)) {
@@ -283,7 +278,6 @@ export default function AccountPage() {
 
         const updated = { ...s, [field]: value }
 
-        // Si cambia la hora de inicio, recalculamos automáticamente el fin usando la duración global
         if (field === 'start_time') {
           updated.end_time = calculateEndTime(value, prev.shift_duration_minutes)
         }
@@ -293,7 +287,6 @@ export default function AccountPage() {
     }))
   }
 
-  // --- MANEJO DE ESQUEMAS DE TARIFAS ---
   const handleAddPricingScheme = () => {
     const newScheme: PricingScheme = {
       id: Date.now().toString(),
@@ -337,7 +330,6 @@ export default function AccountPage() {
     }))
   }
 
-  // --- SUBIR / CAMBIAR LOGO ---
   const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -379,7 +371,6 @@ export default function AccountPage() {
     setMessage({ text: '🖼️ Logo actualizado. Acordate de guardar los cambios para confirmar.', type: 'success' })
   }
 
-  // --- SUBIR FOTOS A GALERÍA ---
   const handleUploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
@@ -473,7 +464,6 @@ export default function AccountPage() {
     setMessage({ text: '🗑️ Logo eliminado.', type: 'success' })
   }
 
-  // Guardar datos del Pelotero / Salón
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsUpdatingProfile(true)
@@ -525,7 +515,6 @@ export default function AccountPage() {
     }
   }
 
-  // Guardar configuración de Turnos y Esquemas de Precios con Validación de Superposición y Turnos Iguales
   const handleUpdateShiftsConfig = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage(null)
@@ -533,7 +522,6 @@ export default function AccountPage() {
     const bufferMinutes = Number(shiftSettings.turn_buffer_minutes) || 0
     const shifts = shiftSettings.fixed_shifts
 
-    // 1. Validar turnos con hora de inicio idéntica
     const startTimesSet = new Set()
     for (const shift of shifts) {
       if (startTimesSet.has(shift.start_time)) {
@@ -546,8 +534,6 @@ export default function AccountPage() {
       startTimesSet.add(shift.start_time)
     }
 
-    // 2. Validar superposición considerando el buffer / tiempo entre turnos
-    // Ordenamos los turnos cronológicamente por su hora de inicio
     const sortedShifts = [...shifts].sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time))
 
     for (let i = 0; i < sortedShifts.length - 1; i++) {
@@ -556,7 +542,6 @@ export default function AccountPage() {
 
       const currentStartMins = timeToMinutes(current.start_time)
       const currentEndMins = currentStartMins + Number(shiftSettings.shift_duration_minutes)
-      // El tiempo total ocupado incluye el turno de fin + el buffer de descanso/limpieza
       const currentTotalOccupiedMins = currentEndMins + bufferMinutes
 
       const nextStartMins = timeToMinutes(next.start_time)
@@ -618,6 +603,38 @@ export default function AccountPage() {
     }
   }
 
+  // --- MODIFICAR CONTRASEÑA ---
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage(null)
+
+    if (!newPassword || newPassword.length < 6) {
+      setMessage({ text: '⚠️ La contraseña nueva debe tener al menos 6 caracteres.', type: 'error' })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage({ text: '⚠️ Las contraseñas no coinciden.', type: 'error' })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+
+    setIsUpdatingPassword(false)
+
+    if (error) {
+      setMessage({ text: 'Error al actualizar contraseña: ' + error.message, type: 'error' })
+    } else {
+      setMessage({ text: '🔒 ¡Contraseña actualizada con éxito!', type: 'success' })
+      setNewPassword('')
+      setConfirmPassword('')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
@@ -657,7 +674,7 @@ export default function AccountPage() {
         <button
           type="button"
           onClick={() => setActiveTab('info')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'info'
               ? 'bg-white text-[#1F2937] shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
@@ -668,13 +685,24 @@ export default function AccountPage() {
         <button
           type="button"
           onClick={() => setActiveTab('shifts')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'shifts'
               ? 'bg-white text-[#1F2937] shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span>⏰</span> Información de Turnos y Tarifas
+          <span>⏰</span> Turnos y Tarifas
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('password')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'password'
+              ? 'bg-white text-[#1F2937] shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>🔑</span> Contraseña
         </button>
       </div>
 
@@ -877,319 +905,291 @@ export default function AccountPage() {
                 onChange={(e) => setMapUrl(e.target.value)}
                 className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
               />
-
-              {mapUrl && (
-                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-[#F3F4F6] h-48 w-full">
-                  <iframe
-                    title="Google Maps"
-                    src={getEmbedMapUrl(mapUrl)}
-                    className="w-full h-full border-0"
-                    loading="lazy"
-                  />
-                </div>
-              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 border-t border-slate-100">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Instagram (@usuario)</label>
-                <input
-                  type="text"
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Facebook</label>
-                <input
-                  type="text"
-                  value={facebook}
-                  onChange={(e) => setFacebook(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-3">
-              <button
-                type="submit"
-                disabled={isUpdatingProfile}
-                className="py-2.5 px-5 bg-[#0D9488] text-white font-bold text-xs rounded-xl hover:bg-teal-700 transition-all disabled:opacity-50"
-              >
-                {isUpdatingProfile ? 'Guardando...' : 'Guardar Cambios'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isUpdatingProfile}
+              className="w-full py-3 bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50"
+            >
+              {isUpdatingProfile ? 'Guardando datos...' : '💾 Guardar Datos del Salón'}
+            </button>
           </form>
         </div>
       )}
 
-      {/* CONTENIDO PESTAÑA 2: INFORMACIÓN DE TURNOS Y TARIFAS DINÁMICAS */}
+      {/* CONTENIDO PESTAÑA 2: INFORMACIÓN DE TURNOS Y TARIFAS */}
       {activeTab === 'shifts' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <h2 className="text-base font-black text-[#1F2937] border-b border-slate-100 pb-3">
-            ⏰ Configuración de Turnos y Tarifas Personalizadas
+            ⏰ Configuración de Turnos y Tarifas
           </h2>
 
           <form onSubmit={handleUpdateShiftsConfig} className="space-y-6">
-            
-            {/* DURACIÓN GENERAL DE LOS TURNOS */}
-            <div className="bg-teal-50/60 p-4 rounded-2xl border border-teal-100 space-y-2">
-              <label className="block text-xs font-black uppercase text-[#0D9488]">
-                ⏱️ Duración General de los Turnos (Común para todos)
-              </label>
-              <p className="text-[11px] text-slate-600">
-                Define cuánto dura un turno estándar en tu salón. La hora de fin de cada turno se calculará automáticamente a partir de su hora de inicio.
-              </p>
-              <select
-                value={shiftSettings.shift_duration_minutes}
-                onChange={(e) =>
-                  setShiftSettings({ ...shiftSettings, shift_duration_minutes: Number(e.target.value) })
-                }
-                className="w-full max-w-xs px-3 py-2 bg-white border border-teal-200 rounded-xl text-xs font-bold text-[#1F2937]"
-              >
-                <option value={120}>2 Horas (120 minutos)</option>
-                <option value={150}>2.5 Horas (150 minutos)</option>
-                <option value={180}>3 Horas (180 minutos)</option>
-                <option value={210}>3.5 Horas (210 minutos)</option>
-                <option value={240}>4 Horas (240 minutos)</option>
-                <option value={300}>5 Horas (300 minutos)</option>
-              </select>
-            </div>
-
-            {/* 1. TURNOS PREDEFINIDOS */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-[#0D9488] tracking-wider">
-                    📌 Turnos Predefinidos (Plantillas)
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Establece el nombre y la hora de inicio. El final se calcula automáticamente.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddShift}
-                  className="py-1.5 px-3 bg-teal-50 text-[#0D9488] font-bold text-xs rounded-xl border border-teal-200 hover:bg-teal-100 transition-all flex items-center gap-1"
-                >
-                  <span>➕</span> Agregar Turno
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {shiftSettings.fixed_shifts.map((shift) => (
-                  <div
-                    key={shift.id}
-                    className="p-4 bg-[#F3F4F6] rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end"
-                  >
-                    <div className="sm:col-span-4">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
-                      <input
-                        type="text"
-                        value={shift.name}
-                        onChange={(e) => handleUpdateShift(shift.id, 'name', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
-                        placeholder="Ej: Turno Tarde"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-3">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hora Inicio</label>
-                      <input
-                        type="time"
-                        value={shift.start_time}
-                        onChange={(e) => handleUpdateShift(shift.id, 'start_time', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-4 flex flex-col justify-center">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Calcula Fin (Automático)</span>
-                      <span className="px-3 py-2 bg-teal-50 border border-teal-200 rounded-xl text-xs font-black text-teal-900 block text-center">
-                        {shift.end_time || '---'} hs
-                      </span>
-                    </div>
-
-                    <div className="sm:col-span-1 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveShift(shift.id)}
-                        className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl border border-rose-200 text-xs font-bold transition-all w-full flex items-center justify-center"
-                        title="Eliminar Turno"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. REGLAS DE TIEMPO Y BUFFER */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#F3F4F6] p-4 rounded-2xl border border-slate-200/60">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ⏱️ Tiempo libre / limpieza entre turnos (minutos)
+                  Duración Estándar del Turno (Minutos)
                 </label>
                 <input
                   type="number"
+                  step="30"
+                  min="60"
+                  value={shiftSettings.shift_duration_minutes}
+                  onChange={(e) =>
+                    setShiftSettings({
+                      ...shiftSettings,
+                      shift_duration_minutes: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Buffer / Limpieza entre Turnos (Minutos)
+                </label>
+                <input
+                  type="number"
+                  step="15"
                   min="0"
                   value={shiftSettings.turn_buffer_minutes}
                   onChange={(e) =>
-                    setShiftSettings({ ...shiftSettings, turn_buffer_minutes: Number(e.target.value) })
+                    setShiftSettings({
+                      ...shiftSettings,
+                      turn_buffer_minutes: Number(e.target.value),
+                    })
                   }
-                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-bold"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Evita que se encimen reservas seguidas dejando este margen de descanso.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between bg-[#F3F4F6] p-4 rounded-2xl border border-slate-200">
-                <div>
-                  <span className="block text-xs font-bold text-slate-700">Permitir Horas Extras</span>
-                  <span className="text-[10px] text-slate-400">Habilita sumar tiempo adicional al turno base.</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={shiftSettings.allow_extra_hours}
-                  onChange={(e) =>
-                    setShiftSettings({ ...shiftSettings, allow_extra_hours: e.target.checked })
-                  }
-                  className="w-5 h-5 rounded text-[#0D9488] focus:ring-[#0D9488]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
                 />
               </div>
             </div>
 
-            {/* 3. ESQUEMAS DE TARIFAS */}
-            <div className="space-y-4 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-black uppercase text-[#0D9488] tracking-wider">
-                    💰 Esquemas de Tarifas por Día y Feriados
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Establece cuánto cuesta la base del turno y las horas extra según los días de la semana.
-                  </p>
-                </div>
+            {/* Turnos Fijos */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-black uppercase text-[#0D9488] tracking-wider">
+                  📌 Turnos Fijos del Salón
+                </h3>
                 <button
                   type="button"
-                  onClick={handleAddPricingScheme}
-                  className="py-1.5 px-3 bg-teal-50 text-[#0D9488] font-bold text-xs rounded-xl border border-teal-200 hover:bg-teal-100 transition-all flex items-center gap-1"
+                  onClick={handleAddShift}
+                  className="py-1.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0D9488] text-xs font-bold rounded-xl border border-teal-200"
                 >
-                  <span>➕</span> Agregar Tarifa
+                  + Agregar Turno
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {shiftSettings.pricing_schemes.map((scheme) => (
-                  <div key={scheme.id} className="p-5 bg-[#F3F4F6] rounded-2xl border border-slate-200 space-y-4">
-                    <div className="flex justify-between items-center gap-3">
-                      <input
-                        type="text"
-                        value={scheme.name}
-                        onChange={(e) => handleUpdatePricingScheme(scheme.id, 'name', e.target.value)}
-                        className="w-full max-w-sm px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                        placeholder="Nombre de la Tarifa"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePricingScheme(scheme.id)}
-                        className="py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl border border-rose-200 text-xs font-bold transition-all"
-                      >
-                        🗑️ Eliminar
-                      </button>
-                    </div>
+              {shiftSettings.fixed_shifts.map((shift) => (
+                <div key={shift.id} className="flex items-center gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <input
+                    type="text"
+                    value={shift.name}
+                    onChange={(e) => handleUpdateShift(shift.id, 'name', e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                    placeholder="Nombre del turno"
+                  />
+                  <input
+                    type="time"
+                    value={shift.start_time}
+                    onChange={(e) => handleUpdateShift(shift.id, 'start_time', e.target.value)}
+                    className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                  />
+                  <span className="text-xs text-slate-400 font-bold">a {shift.end_time}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveShift(shift.id)}
+                    className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+            </div>
 
-                    {/* Selector de Días */}
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                        Días de aplicación:
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {WEEK_DAYS.map((day) => {
-                          const isSelected = scheme.days.includes(day.id)
-                          return (
-                            <button
-                              key={day.id}
-                              type="button"
-                              onClick={() => handleToggleDayInScheme(scheme.id, day.id)}
-                              className={`py-1.5 px-3 rounded-xl text-xs font-bold border transition-all ${
-                                isSelected
-                                  ? 'bg-[#0D9488] text-white border-[#0D9488] shadow-sm'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              {day.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
+            {/* Esquemas de Tarifas */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-black uppercase text-[#0D9488] tracking-wider">
+                  💰 Esquemas de Precios
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleAddPricingScheme}
+                  className="py-1.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0D9488] text-xs font-bold rounded-xl border border-teal-200"
+                >
+                  + Agregar Tarifa
+                </button>
+              </div>
 
-                    {/* Checkbox Feriados */}
-                    <div>
-                      <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={scheme.includes_holidays}
-                          onChange={(e) => handleUpdatePricingScheme(scheme.id, 'includes_holidays', e.target.checked)}
-                          className="rounded text-[#0D9488] focus:ring-[#0D9488]"
-                        />
-                        🎉 Aplicar también en días Feriados
-                      </label>
-                    </div>
+              {shiftSettings.pricing_schemes.map((scheme) => (
+                <div key={scheme.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={scheme.name}
+                      onChange={(e) => handleUpdatePricingScheme(scheme.id, 'name', e.target.value)}
+                      className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                      placeholder="Nombre de la tarifa"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePricingScheme(scheme.id)}
+                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold"
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  </div>
 
-                    {/* Precios */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/60">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Precio Base ($)</label>
-                        <input
-                          type="number"
-                          value={scheme.base_price}
-                          onChange={(e) => handleUpdatePricingScheme(scheme.id, 'base_price', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                          placeholder="Ej: 120000"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hora Extra ($)</label>
-                        <input
-                          type="number"
-                          value={scheme.extra_hour_price}
-                          onChange={(e) => handleUpdatePricingScheme(scheme.id, 'extra_hour_price', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                          placeholder="Ej: 20000"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Media Hora Extra ($)</label>
-                        <input
-                          type="number"
-                          value={scheme.half_extra_hour_price}
-                          onChange={(e) => handleUpdatePricingScheme(scheme.id, 'half_extra_hour_price', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                          placeholder="Ej: 12000"
-                        />
-                      </div>
+                  {/* Selección de días */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Días Aplicables</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WEEK_DAYS.map((day) => {
+                        const active = scheme.days.includes(day.id)
+                        return (
+                          <button
+                            key={day.id}
+                            type="button"
+                            onClick={() => handleToggleDayInScheme(scheme.id, day.id)}
+                            className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all ${
+                              active
+                                ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                                : 'bg-white text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id={`holiday-${scheme.id}`}
+                      checked={scheme.includes_holidays}
+                      onChange={(e) => handleUpdatePricingScheme(scheme.id, 'includes_holidays', e.target.checked)}
+                      className="rounded text-teal-600 focus:ring-teal-500"
+                    />
+                    <label htmlFor={`holiday-${scheme.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">
+                      Aplica también para días feriados
+                    </label>
+                  </div>
+
+                  {/* Precios */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/60">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Precio Base ($)</label>
+                      <input
+                        type="number"
+                        value={scheme.base_price}
+                        onChange={(e) => handleUpdatePricingScheme(scheme.id, 'base_price', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hora Extra ($)</label>
+                      <input
+                        type="number"
+                        value={scheme.extra_hour_price}
+                        onChange={(e) => handleUpdatePricingScheme(scheme.id, 'extra_hour_price', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Media Hora Extra ($)</label>
+                      <input
+                        type="number"
+                        value={scheme.half_extra_hour_price}
+                        onChange={(e) => handleUpdatePricingScheme(scheme.id, 'half_extra_hour_price', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="flex justify-end pt-3">
-              <button
-                type="submit"
-                disabled={isUpdatingShifts}
-                className="py-2.5 px-5 bg-[#0D9488] text-white font-bold text-xs rounded-xl hover:bg-teal-700 transition-all disabled:opacity-50"
-              >
-                {isUpdatingShifts ? 'Guardando configuración...' : '⏱️ Guardar Configuración de Turnos'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isUpdatingShifts}
+              className="w-full py-3 bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50"
+            >
+              {isUpdatingShifts ? 'Guardando configuración...' : '⏱️ Guardar Configuración de Turnos y Tarifas'}
+            </button>
           </form>
+        </div>
+      )}
+
+      {/* CONTENIDO PESTAÑA 3: MODIFICAR CONTRASEÑA */}
+      {activeTab === 'password' && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+          <h2 className="text-base font-black text-[#1F2937] border-b border-slate-100 pb-3">
+            🔑 Modificar Contraseña de Acceso
+          </h2>
+          <p className="text-xs text-slate-500 font-medium">
+            Ingresa tu nueva contraseña. Asegúrate de que tenga al menos 6 caracteres.
+          </p>
+
+          <form onSubmit={handleUpdatePassword} className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Nueva Contraseña</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Confirmar Nueva Contraseña</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUpdatingPassword}
+              className="w-full py-3 bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 mt-2"
+            >
+              {isUpdatingPassword ? 'Actualizando...' : '🔒 Actualizar Contraseña'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL DE VISTA PREVIA DE IMAGEN (LIGHTBOX) */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div className="relative max-w-2xl max-h-[90vh] w-full flex items-center justify-center">
+            <img
+              src={previewImage}
+              alt="Vista previa ampliada"
+              className="max-h-[85vh] max-w-full object-contain rounded-2xl border-4 border-white shadow-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-2 right-2 bg-black/60 hover:bg-black text-white w-9 h-9 rounded-full font-bold text-sm flex items-center justify-center transition-all"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

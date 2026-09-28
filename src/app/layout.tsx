@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Eventos App',
+  title: 'Festejamos.com.ar',
   description: 'Sistema de gestión de reservas e invitaciones digitales',
 }
 
