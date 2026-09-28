@@ -67,11 +67,10 @@ export default function HomePage() {
             {/* Tarjeta 1: Agenda y Turnos */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col justify-between">
               <div className="relative h-36 w-full bg-slate-100">
-                <Image
+                <img
                   src="/agenda.jpg"
                   alt="Agenda y Turnos"
-                  fill
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -85,11 +84,10 @@ export default function HomePage() {
             {/* Tarjeta 2: Control de Eventos */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-pink-200 transition-all flex flex-col justify-between">
               <div className="relative h-36 w-full bg-slate-100">
-                <Image
+                <img
                   src="/eventocreado.jpg"
                   alt="Control de Eventos"
-                  fill
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -103,11 +101,10 @@ export default function HomePage() {
             {/* Tarjeta 3: Precios Claros */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-amber-200 transition-all flex flex-col justify-between">
               <div className="relative h-36 w-full bg-slate-100">
-                <Image
+                <img
                   src="/turnostarifas.jpg"
                   alt="Precios Claros"
-                  fill
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -121,11 +118,10 @@ export default function HomePage() {
             {/* Tarjeta 4: Invitaciones */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-teal-200 transition-all flex flex-col justify-between">
               <div className="relative h-36 w-full bg-slate-100">
-                <Image
+                <img
                   src="/invitacion.jpg"
                   alt="Invitaciones Digitales"
-                  fill
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div className="p-5 space-y-2">
