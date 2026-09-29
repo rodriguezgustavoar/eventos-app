@@ -897,6 +897,31 @@ export default function AccountPage() {
               </div>
             </div>
 
+            {/* Redes Sociales: Instagram y Facebook */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Instagram (Usuario o URL)</label>
+                <input
+                  type="text"
+                  placeholder="@tucuenta"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Facebook (Perfil o Página)</label>
+                <input
+                  type="text"
+                  placeholder="nombre.pag"
+                  value={facebook}
+                  onChange={(e) => setFacebook(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-xs font-semibold text-[#1F2937]"
+                />
+              </div>
+            </div>
+
             <div className="space-y-3 pt-2">
               <label className="block text-xs font-bold text-slate-700">🗺️ Enlace de Google Maps</label>
               <input

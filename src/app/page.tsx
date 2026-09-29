@@ -66,11 +66,11 @@ export default function HomePage() {
             
             {/* Tarjeta 1: Agenda y Turnos */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-blue-200 transition-all flex flex-col justify-between">
-              <div className="relative h-36 w-full bg-slate-100">
+              <div className="w-full h-44 bg-slate-50 p-2 flex items-center justify-center overflow-hidden border-b border-slate-100">
                 <img
                   src="/agenda.jpg"
                   alt="Agenda y Turnos"
-                  className="h-full w-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -83,11 +83,11 @@ export default function HomePage() {
 
             {/* Tarjeta 2: Control de Eventos */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-pink-200 transition-all flex flex-col justify-between">
-              <div className="relative h-36 w-full bg-slate-100">
+              <div className="w-full h-44 bg-slate-50 p-2 flex items-center justify-center overflow-hidden border-b border-slate-100">
                 <img
                   src="/eventocreado.jpg"
                   alt="Control de Eventos"
-                  className="h-full w-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -100,11 +100,11 @@ export default function HomePage() {
 
             {/* Tarjeta 3: Precios Claros */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-amber-200 transition-all flex flex-col justify-between">
-              <div className="relative h-36 w-full bg-slate-100">
+              <div className="w-full h-44 bg-slate-50 p-2 flex items-center justify-center overflow-hidden border-b border-slate-100">
                 <img
                   src="/turnostarifas.jpg"
                   alt="Precios Claros"
-                  className="h-full w-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="p-5 space-y-2">
@@ -117,11 +117,11 @@ export default function HomePage() {
 
             {/* Tarjeta 4: Invitaciones */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 hover:border-teal-200 transition-all flex flex-col justify-between">
-              <div className="relative h-36 w-full bg-slate-100">
+              <div className="w-full h-44 bg-slate-50 p-2 flex items-center justify-center overflow-hidden border-b border-slate-100">
                 <img
                   src="/invitacion.jpg"
                   alt="Invitaciones Digitales"
-                  className="h-full w-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="p-5 space-y-2">

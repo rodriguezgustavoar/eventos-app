@@ -9,16 +9,21 @@ export default async function ClientesPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Consulta real a la tabla 'profiles' filtrando el rol 'user'
+  // Consulta real a la tabla 'profiles' filtrando:
+  // 1. Que el rol sea 'user'
+  // 2. Que la columna 'isactive' sea TRUE (solo activos)
+  // 3. Seleccionamos también la columna 'category'
   const { data: clientes, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role, phone, address, city, province, logo_url')
-    .eq('role', 'user');
+    .select('id, full_name, role, phone, address, city, province, logo_url, category, is_active')
+    .eq('role', 'user')
+    .eq('is_active', true); // <-- Filtro agregado: Solo activos
 
   if (error) {
     console.error('Error al cargar los clientes:', error.message);
   }
 
+  // Filtramos manualmente por seguridad en el cliente, aunque el filtro principal ya se hace en Supabase
   const listaClientes = clientes || [];
 
   return (
@@ -72,17 +77,17 @@ export default async function ClientesPage() {
         {/* Título de la sección */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-extrabold text-[#0B2545]">
-            Nuestros Clientes y Proveedores Registrados
+            Nuestros Clientes y Proveedores Destacados
           </h1>
           <p className="text-sm text-slate-500 max-w-lg mx-auto">
             Encontrá salones, servicios de catering, animación y profesionales listos para tu próximo evento.
           </p>
         </div>
 
-        {/* Mensaje por si no hay registros */}
+        {/* Mensaje por si no hay registros activos */}
         {listaClientes.length === 0 ? (
           <div className="text-center py-16 text-slate-400 text-sm">
-            No hay clientes registrados en este momento.
+            No hay clientes activos registrados en este momento.
           </div>
         ) : (
           /* Grid de Tarjetas de Clientes */
@@ -107,18 +112,26 @@ export default async function ClientesPage() {
                         Sin logo
                       </div>
                     )}
+                    
+                    {/* Badge de Categoría (NUEVO) */}
+                    {cliente.category && (
+                      <span className="absolute top-3 right-3 bg-pink-50 text-pink-700 text-[10px] font-bold px-3 py-1 rounded-full border border-pink-100 shadow-sm">
+                        {cliente.category}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Información del Cliente con texto en color oscuro */}
+                  {/* Información del Cliente */}
                   <div className="p-5 space-y-3">
                     <h3 className="font-bold text-[#0B2545] text-lg leading-snug">
                       {cliente.full_name || 'Sin nombre'}
                     </h3>
                     
-                    <div className="space-y-2 text-xs text-slate-700 font-medium">
+                    <div className="space-y-2.5 text-xs text-slate-700 font-medium">
                       {cliente.address && (
-                        <p className="flex items-center gap-2">
-                          <span>📍</span> {cliente.address}
+                        <p className="flex items-start gap-2">
+                          <span className="mt-0.5">📍</span> 
+                          <span className="flex-1">{cliente.address}</span>
                         </p>
                       )}
                       

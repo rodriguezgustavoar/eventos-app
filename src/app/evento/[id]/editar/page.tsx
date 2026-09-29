@@ -93,15 +93,15 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     setLoading(true)
     setNotFound(false)
 
-    // Validar sesión activa antes de cargar nada
+    // 1. Validar sesión activa antes de cargar nada
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      router.replace('/login') // Redirige automáticamente al login si no hay sesión
+      router.replace('/login')
       return
     }
 
-    // Cargar configuración de turnos del perfil del usuario
+    // 2. Cargar configuración de turnos del perfil del usuario actual
     const { data: profile } = await supabase
       .from('profiles')
       .select('shift_settings, turn_buffer_minutes')
@@ -112,12 +112,13 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
       setShiftSettings(profile.shift_settings)
     }
 
-    // Cargar los datos del evento
+    // 3. Cargar los datos del evento VALIDANDO que pertenezca al usuario logueado (profile_id)
     const { data: bookingData, error } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', bookingId)
-      .single()
+      .eq('profile_id', user.id) // <-- ESTO EVITA QUE PUEDA VER/EDITAR EVENTOS AJENOS
+      .maybeSingle()
 
     if (error || !bookingData) {
       setNotFound(true)
@@ -355,10 +356,12 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
       deposit_paid: Number(booking.deposit_paid) || 0
     }
 
+    // Aseguramos también en el update que pertenezca al usuario para mayor seguridad
     const { error } = await supabase
       .from('bookings')
       .update(payload)
       .eq('id', bookingId)
+      .eq('profile_id', user.id)
 
     setSaving(false)
 
@@ -383,7 +386,8 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white p-6 rounded-2xl text-center max-w-sm border border-gray-200 shadow-sm space-y-4">
           <span className="text-4xl">❌</span>
-          <h2 className="text-lg font-bold text-gray-800">Evento no encontrado</h2>
+          <h2 className="text-lg font-bold text-gray-800">Evento no encontrado o sin permisos</h2>
+          <p className="text-xs text-gray-500">Este evento no existe o pertenece a otro usuario.</p>
           <Link
             href="/admin"
             className="inline-block py-2 px-4 bg-teal-600 text-white font-bold text-xs rounded-xl hover:bg-teal-700"
