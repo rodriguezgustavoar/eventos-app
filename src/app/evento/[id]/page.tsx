@@ -609,7 +609,45 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
-            
+            {/* SECCIÓN DE DESCUENTOS (Permite hasta 100%) */}
+            <div className="bg-purple-50/60 p-4 rounded-2xl border border-purple-100 space-y-3">
+              <label className="block text-xs font-bold text-purple-900">
+                🏷️ Aplicar Descuento a la Tarifa
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex bg-white rounded-xl border border-purple-200 p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleDiscountChange('fixed', String(discountValue))}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'fixed' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
+                    }`}
+                  >
+                    Monto Fijo ($)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDiscountChange('percent', String(discountValue))}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'percent' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
+                    }`}
+                  >
+                    Porcentaje (%)
+                  </button>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === 'percent' ? "100" : undefined}
+                    value={discountValue}
+                    onChange={(e) => handleDiscountChange(discountType, e.target.value)}
+                    placeholder={discountType === 'fixed' ? 'Ej: 10000' : 'Ej: 100 (para 100%)'}
+                    className="w-full text-sm p-2.5 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-bold text-purple-900"
+                  />
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -728,46 +766,6 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-{/* SECCIÓN DE DESCUENTOS (Permite hasta 100%) */}
-            <div className="bg-purple-50/60 p-4 rounded-2xl border border-purple-100 space-y-3">
-              <label className="block text-xs font-bold text-purple-900">
-                🏷️ Aplicar Descuento a la Tarifa
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex bg-white rounded-xl border border-purple-200 p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleDiscountChange('fixed', discountValue)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      discountType === 'fixed' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
-                    }`}
-                  >
-                    Monto Fijo ($)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDiscountChange('percent', discountValue)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      discountType === 'percent' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
-                    }`}
-                  >
-                    Porcentaje (%)
-                  </button>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    min="0"
-                    max={discountType === 'percent' ? "100" : undefined}
-                    value={discountValue}
-                    onChange={(e) => handleDiscountChange(discountType, e.target.value)}
-                    placeholder={discountType === 'fixed' ? 'Ej: 10000' : 'Ej: 100 (para 100%)'}
-                    className="w-full text-sm p-2.5 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-bold text-purple-900"
-                  />
-                </div>
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={saving}
@@ -866,7 +864,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
                       <span className="font-bold text-gray-800 text-sm">{r.guest_name}</span>
                       <div className="flex gap-1.5">
                         <span className="bg-teal-100 text-teal-900 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                          👨‍👩‍‍👧 {r.adults_count || 1}
+                          👨‍👩‍👧 {r.adults_count || 1}
                         </span>
                         <span className="bg-blue-100 text-blue-900 text-[11px] font-bold px-2 py-0.5 rounded-full">
                           🧒 {r.children_count || 0}
