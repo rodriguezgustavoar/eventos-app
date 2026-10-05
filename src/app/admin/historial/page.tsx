@@ -20,6 +20,12 @@ interface Booking {
   profile_id?: string
 }
 
+interface PaymentRecord {
+  id: string
+  amount: number
+  created_at: string
+}
+
 const MONTHS = [
   { value: 'all', label: 'Todos los meses' },
   { value: '01', label: 'Enero' },
@@ -43,6 +49,13 @@ export default function HistoryPage() {
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [selectedYear, setSelectedYear] = useState<string>('all')
+
+  // Estado para modal de pagos e historial
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<Booking | null>(null)
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState<string>('')
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
 
   const supabase = createClient()
 
@@ -77,6 +90,24 @@ export default function HistoryPage() {
     }
 
     setLoading(false)
+  }
+
+  // Cargar historial de pagos de un evento específico
+  const fetchPaymentHistory = async (bookingId: string) => {
+    setLoadingHistory(true)
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error al cargar historial de pagos:', error)
+      setPaymentHistory([])
+    } else {
+      setPaymentHistory(data || [])
+    }
+    setLoadingHistory(false)
   }
 
   // Filtrar ÚNICAMENTE eventos pasados
@@ -131,6 +162,69 @@ export default function HistoryPage() {
     }
   }, [filteredBookings])
 
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedBookingForPayment) return
+
+    const amountToAdd = parseFloat(paymentAmount)
+    if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      alert('Por favor, ingresa un monto válido.')
+      return
+    }
+
+    setIsSubmittingPayment(true)
+
+    const currentDeposit = Number(selectedBookingForPayment.deposit_paid) || 0
+    const newDepositTotal = currentDeposit + amountToAdd
+
+    // 1. Actualizar el acumulado en la tabla bookings
+    const { error: updateError } = await supabase
+      .from('bookings')
+      .update({ deposit_paid: newDepositTotal })
+      .eq('id', selectedBookingForPayment.id)
+
+    if (updateError) {
+      setIsSubmittingPayment(false)
+      alert('Error al registrar el pago: ' + updateError.message)
+      return
+    }
+
+    // 2. Insertar el registro individual en la tabla de historial de pagos (payments)
+    const { error: paymentInsertError } = await supabase
+      .from('payments')
+      .insert([
+        {
+          booking_id: selectedBookingForPayment.id,
+          amount: amountToAdd,
+        }
+      ])
+
+    setIsSubmittingPayment(false)
+
+    if (paymentInsertError) {
+      console.warn('Advertencia: El total se actualizó, pero no se pudo guardar en la tabla payments.', paymentInsertError)
+    }
+
+    // Actualizar estado local
+    setBookings((prev) =>
+      prev.map((item) =>
+        item.id === selectedBookingForPayment.id
+          ? { ...item, deposit_paid: newDepositTotal }
+          : item
+      )
+    )
+
+    alert(`💵 ¡Pago de $${amountToAdd.toLocaleString()} registrado con éxito!`)
+    
+    // Refrescar historial en el modal abierto
+    fetchPaymentHistory(selectedBookingForPayment.id)
+    setSelectedBookingForPayment({
+      ...selectedBookingForPayment,
+      deposit_paid: newDepositTotal
+    })
+    setPaymentAmount('')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
@@ -149,7 +243,7 @@ export default function HistoryPage() {
           </span>
           <h1 className="text-2xl font-black text-[#1F2937] mt-1">Historial de Eventos 📜</h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Registro de cumpleaños finalizados (solo lectura).
+            Registro de cumpleaños finalizados.
           </p>
         </div>
 
@@ -281,9 +375,21 @@ export default function HistoryPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setSelectedBookingForPayment(item)
+                        fetchPaymentHistory(item.id)
+                        setPaymentAmount('')
+                      }}
+                      className="py-1.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0D9488] font-bold text-xs rounded-xl border border-teal-200 transition-colors flex items-center gap-1"
+                      title="Registrar abono/pago y ver historial"
+                    >
+                      💵 Agregar Pago / Historial
+                    </button>
+                    
                     <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 uppercase tracking-wider flex items-center gap-1">
-                      🔒 Finalizado (Solo lectura)
+                      🔒 Finalizado
                     </span>
                   </div>
                 </div>
@@ -308,6 +414,93 @@ export default function HistoryPage() {
           })
         )}
       </div>
+
+      {/* Modal para Registrar Pago e Historial */}
+      {selectedBookingForPayment && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h3 className="text-lg font-black text-[#1F2937]">Gestión de Pagos</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Evento: Cumple de {selectedBookingForPayment.child_name}
+              </p>
+            </div>
+
+            <div className="bg-[#F3F4F6] p-3 rounded-2xl text-xs space-y-1 border border-slate-200/60">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Total:</span>
+                <span className="font-bold">${(Number(selectedBookingForPayment.total_price) || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Abonado hasta hoy:</span>
+                <span className="font-bold text-[#0D9488]">${(Number(selectedBookingForPayment.deposit_paid) || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-1 font-bold">
+                <span className="text-slate-700">Saldo pendiente:</span>
+                <span className="text-amber-600">
+                  ${((Number(selectedBookingForPayment.total_price) || 0) - (Number(selectedBookingForPayment.deposit_paid) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Historial de Pagos */}
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <h4 className="text-xs font-bold text-slate-700">📜 Historial de Pagos Realizados</h4>
+              {loadingHistory ? (
+                <p className="text-[11px] text-slate-400">Cargando historial...</p>
+              ) : paymentHistory.length === 0 ? (
+                <p className="text-[11px] text-slate-400 italic">No hay pagos registrados en el historial todavía.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {paymentHistory.map((p) => (
+                    <div key={p.id} className="flex justify-between items-center bg-teal-50/50 p-2 rounded-xl border border-teal-100 text-xs">
+                      <span className="font-bold text-teal-900">+ ${Number(p.amount).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(p.created_at).toLocaleDateString()} - {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleAddPayment} className="space-y-4 border-t border-slate-100 pt-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Registrar Nuevo Abono / Pago ($)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  required
+                  placeholder="Ej: 5000"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#F3F4F6] border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBookingForPayment(null)}
+                  className="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-[#1F2937] font-bold text-xs rounded-xl transition-colors"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPayment}
+                  className="flex-1 py-2 px-3 bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50"
+                >
+                  {isSubmittingPayment ? 'Guardando...' : 'Confirmar Pago'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -97,6 +97,10 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
   const [extraMinutes, setExtraMinutes] = useState<number>(0)
   const [currentSchemeName, setCurrentSchemeName] = useState<string>('')
 
+  // Estados para manejo de descuentos
+  const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('fixed')
+  const [discountValue, setDiscountValue] = useState<number | string>('')
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -167,7 +171,9 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
     holidayFlag: boolean,
     shiftId: string | null,
     addedMinutes: number,
-    manualStart?: string
+    manualStart?: string,
+    dType: 'fixed' | 'percent' = discountType,
+    dVal: number | string = discountValue
   ) => {
     if (!shiftSettings || !shiftSettings.pricing_schemes || shiftSettings.pricing_schemes.length === 0) {
       return
@@ -222,40 +228,58 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
       (fullHours * (Number(matchingScheme.extra_hour_price) || 0)) +
       (halfHours * (Number(matchingScheme.half_extra_hour_price) || 0))
 
-    const totalCalculated = basePrice + extraCost
+    let totalCalculated = basePrice + extraCost
+
+    // Aplicar descuento si existe (permitiendo hasta 100%)
+    const numDiscountVal = Number(dVal) || 0
+    if (numDiscountVal >= 0) {
+      if (dType === 'percent') {
+        const validPercent = Math.min(100, numDiscountVal)
+        const discountAmount = (totalCalculated * validPercent) / 100
+        totalCalculated = Math.max(0, totalCalculated - discountAmount)
+      } else {
+        totalCalculated = Math.max(0, totalCalculated - numDiscountVal)
+      }
+    }
 
     setBooking((prev) => ({
       ...prev,
       start_time: targetStart,
       end_time: targetEnd,
-      total_price: totalCalculated > 0 ? totalCalculated : prev.total_price
+      total_price: totalCalculated >= 0 ? totalCalculated : prev.total_price
     }))
   }
 
   const handleDateChange = (newDate: string) => {
     setBooking((prev) => ({ ...prev, event_date: newDate }))
-    recalculateEventDetails(newDate, isHoliday, selectedShiftId, extraMinutes)
+    recalculateEventDetails(newDate, isHoliday, selectedShiftId, extraMinutes, undefined, discountType, discountValue)
   }
 
   const handleHolidayToggle = (checked: boolean) => {
     setIsHoliday(checked)
-    recalculateEventDetails(booking.event_date, checked, selectedShiftId, extraMinutes)
+    recalculateEventDetails(booking.event_date, checked, selectedShiftId, extraMinutes, undefined, discountType, discountValue)
   }
 
   const handleSelectShift = (shift: FixedShift) => {
     setSelectedShiftId(shift.id)
     setExtraMinutes(0)
-    recalculateEventDetails(booking.event_date, isHoliday, shift.id, 0, shift.start_time)
+    recalculateEventDetails(booking.event_date, isHoliday, shift.id, 0, shift.start_time, discountType, discountValue)
   }
 
   const handleExtraMinutesChange = (addedMins: number) => {
     setExtraMinutes(addedMins)
-    recalculateEventDetails(booking.event_date, isHoliday, selectedShiftId, addedMins)
+    recalculateEventDetails(booking.event_date, isHoliday, selectedShiftId, addedMins, undefined, discountType, discountValue)
   }
 
   const handleStartTimeChange = (newStart: string) => {
     setSelectedShiftId(null)
-    recalculateEventDetails(booking.event_date, isHoliday, null, extraMinutes, newStart)
+    recalculateEventDetails(booking.event_date, isHoliday, null, extraMinutes, newStart, discountType, discountValue)
+  }
+
+  const handleDiscountChange = (type: 'fixed' | 'percent', val: string) => {
+    setDiscountType(type)
+    setDiscountValue(val)
+    recalculateEventDetails(booking.event_date, isHoliday, selectedShiftId, extraMinutes, undefined, type, val)
   }
 
   const checkTimeOverlap = async (
@@ -392,7 +416,6 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
         return
       }
 
-      // Registro explícito del pago inicial en la tabla payments
       if (data && depositAmount > 0) {
         const { error: paymentError } = await supabase
           .from('payments')
@@ -586,6 +609,8 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
+            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Nombre del Cumpleañero/a</label>
@@ -703,6 +728,46 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
+{/* SECCIÓN DE DESCUENTOS (Permite hasta 100%) */}
+            <div className="bg-purple-50/60 p-4 rounded-2xl border border-purple-100 space-y-3">
+              <label className="block text-xs font-bold text-purple-900">
+                🏷️ Aplicar Descuento a la Tarifa
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex bg-white rounded-xl border border-purple-200 p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleDiscountChange('fixed', discountValue)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'fixed' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
+                    }`}
+                  >
+                    Monto Fijo ($)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDiscountChange('percent', discountValue)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'percent' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-900 hover:bg-purple-50'
+                    }`}
+                  >
+                    Porcentaje (%)
+                  </button>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === 'percent' ? "100" : undefined}
+                    value={discountValue}
+                    onChange={(e) => handleDiscountChange(discountType, e.target.value)}
+                    placeholder={discountType === 'fixed' ? 'Ej: 10000' : 'Ej: 100 (para 100%)'}
+                    className="w-full text-sm p-2.5 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-bold text-purple-900"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={saving}
@@ -746,7 +811,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
               </button>
             </div>
 
-            {(totalPriceNum > 0 || depositPaidNum > 0) && (
+            {(totalPriceNum > 0 || depositPaidNum > 0 || totalPriceNum === 0) && (
               <div className="pt-3 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
                 <div className="bg-gray-100 p-2.5 rounded-xl border border-gray-200">
                   <p className="text-[10px] text-gray-500 font-bold uppercase">Total Evento</p>
@@ -801,7 +866,7 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
                       <span className="font-bold text-gray-800 text-sm">{r.guest_name}</span>
                       <div className="flex gap-1.5">
                         <span className="bg-teal-100 text-teal-900 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                          👨‍👩‍👧 {r.adults_count || 1}
+                          👨‍👩‍‍👧 {r.adults_count || 1}
                         </span>
                         <span className="bg-blue-100 text-blue-900 text-[11px] font-bold px-2 py-0.5 rounded-full">
                           🧒 {r.children_count || 0}
