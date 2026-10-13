@@ -30,20 +30,29 @@ export default function LoginPage() {
       return
     }
 
-    // 2. Verificar que exista su perfil en la base de datos
+    // 2. Verificar perfil y estado del usuario en la base de datos
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_active') // Asegúrate de pedir la columna is_active (o isactive según tu BD)
       .eq('id', authData.user.id)
       .maybeSingle()
 
     if (profileError || !profile) {
+      await supabase.auth.signOut()
       setError('Error al consultar el perfil de usuario.')
       setLoading(false)
       return
     }
 
-    // 3. Ambos roles (admin y user) van a la ruta /admin
+    // 3. Validar si la cuenta está suspendida / inactiva
+    if (profile.is_active === false) {
+      await supabase.auth.signOut() // Cerramos la sesión para no dejar tokens activos
+      setError('⛔ Tu cuenta se encuentra suspendida o inactiva. Contactá al administrador.')
+      setLoading(false)
+      return
+    }
+
+    // 4. Si todo está correcto, redirigir al panel
     router.push('/admin')
   }
 

@@ -454,11 +454,19 @@ export default function PortalFamiliaPage({ params }: { params: Promise<{ id: st
   }
 
   const copyInvitationLink = () => {
-    const link = `${window.location.origin}/invitacion/${bookingId}`
-    navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 3000)
-  }
+  const link = `${window.location.origin}/invitacion/${bookingId}`
+  const [year, month, day] = booking.event_date.split('-')
+  const formattedDate = `${day}/${month}/${year}`
+  // Mensaje personalizado con formato para WhatsApp (*negrita*, emojis, etc.)
+  const shareText = `🎉 ¡Estás invitado/a al festejo de *${booking.child_name}*! 🥳\n\n` +
+    `📅 *Fecha:* ${formattedDate}\n` +
+    `⏰ *Horario:* ${booking.start_time?.slice(0, 5)} a ${booking.end_time?.slice(0, 5)} hs\n\n` +
+    `👉 Ingresa al siguiente enlace para confirmar tu asistencia:\n${link}`
+
+  navigator.clipboard.writeText(shareText)
+  setCopied(true)
+  setTimeout(() => setCopied(false), 3000)
+}
 
   if (loading) {
     return (
