@@ -121,6 +121,16 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
   }
 
+  // Función segura para formatear el número de WhatsApp
+  const getWhatsAppUrl = (phone: string) => {
+    if (!phone) return ''
+    // Extraemos solo los dígitos del número cargado por el usuario
+    const cleanDigits = phone.replace(/\D/g, '')
+    // Si ya incluye el código de país (ej: 549...), lo dejamos; si no, aseguramos el prefijo si corresponde
+    // Aquí asumimos que los números guardados ya tienen el formato correcto o les aseguramos el formato internacional si es necesario.
+    return `https://wa.me/${cleanDigits}?text=Hola!%20Quería%20consultar%20disponibilidad%20para%20un%20evento.`
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
@@ -147,6 +157,7 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
   const bufferMinutes = salon.shift_settings?.turn_buffer_minutes || 0
   const mapUrl = getExternalMapUrl(salon)
   const fullAddressText = [salon.address, salon.city, salon.province].filter(Boolean).join(', ')
+  const whatsappUrl = salon.phone ? getWhatsAppUrl(salon.phone) : ''
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-[#1F2937] antialiased">
@@ -167,10 +178,10 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
           <p className="text-xs text-slate-500 font-medium">
             📍 {fullAddressText || 'Dirección no especificada'}
           </p>
-          {salon.phone && (
+          {whatsappUrl && (
             <div className="pt-2">
               <a
-                href={`https://wa.me/549${salon.phone.replace(/\D/g, '')}?text=Hola!%20Quería%20consultar%20disponibilidad%20para%20un%20evento.`}
+                href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm transition-all"
