@@ -116,7 +116,7 @@ export default function ContactoPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-base">📞</span>
-                <span>+54 297 4604794</span>
+                <span>+54 297 5280298</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-base">✉️</span>
@@ -127,7 +127,7 @@ export default function ContactoPage() {
             {/* Enlace directo a WhatsApp */}
             <div className="pt-2">
               <a
-                href="https://wa.me/5492974604794"
+                href="https://wa.me/5492975280298"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-600 font-semibold rounded-xl text-xs hover:bg-emerald-100 transition-colors shadow-sm"
