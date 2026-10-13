@@ -124,10 +124,7 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
   // Función segura para formatear el número de WhatsApp
   const getWhatsAppUrl = (phone: string) => {
     if (!phone) return ''
-    // Extraemos solo los dígitos del número cargado por el usuario
     const cleanDigits = phone.replace(/\D/g, '')
-    // Si ya incluye el código de país (ej: 549...), lo dejamos; si no, aseguramos el prefijo si corresponde
-    // Aquí asumimos que los números guardados ya tienen el formato correcto o les aseguramos el formato internacional si es necesario.
     return `https://wa.me/${cleanDigits}?text=Hola!%20Quería%20consultar%20disponibilidad%20para%20un%20evento.`
   }
 
@@ -193,23 +190,7 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
         </div>
       </div>
 
-      {/* GALERÍA DE FOTOS */}
-      {salon.gallery && salon.gallery.length > 0 && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-          <h2 className="text-sm font-black uppercase tracking-wider text-[#0D9488]">🖼️ Galería de Fotos</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {salon.gallery.map((url, index) => (
-              <div
-                key={index}
-                onClick={() => setPreviewImage(url)}
-                className="aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer hover:opacity-90 transition-all"
-              >
-                <img src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* AGENDA Y TURNOS DISPONIBLES CON BOTÓN DE BÚSQUEDA */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
@@ -276,6 +257,24 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
         </div>
       </div>
 
+      {/* GALERÍA DE FOTOS (REINTEGRADA) */}
+      {salon.gallery && salon.gallery.length > 0 && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <h2 className="text-sm font-black uppercase tracking-wider text-[#0D9488]">🖼️ Galería de Fotos</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {salon.gallery.map((url, index) => (
+              <div
+                key={index}
+                onClick={() => setPreviewImage(url)}
+                className="aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer hover:opacity-90 transition-all shadow-sm"
+              >
+                <img src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* SECCIÓN DE UBICACIÓN (TARJETA MODERNA CON ENLACE A GOOGLE MAPS) */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <h2 className="text-sm font-black uppercase tracking-wider text-[#0D9488]">🗺️ Ubicación del Salón</h2>
@@ -295,7 +294,7 @@ export default function SalonPublicPage({ params }: { params: Promise<{ slug: st
         </div>
       </div>
 
-      {/* MODAL LIGHTBOX */}
+      {/* MODAL LIGHTBOX PARA LAS FOTOS DE LA GALERÍA */}
       {previewImage && (
         <div
           onClick={() => setPreviewImage(null)}
