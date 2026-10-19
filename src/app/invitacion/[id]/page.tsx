@@ -26,7 +26,6 @@ function BalloonEffect() {
   const [balloons, setBalloons] = useState<Balloon[]>([])
 
   useEffect(() => {
-    // Inyectar estilos CSS para la animación floatUp dinámicamente
     const styleId = 'balloon-animation-styles'
     if (!document.getElementById(styleId)) {
       const styleTag = document.createElement('style')
@@ -52,7 +51,6 @@ function BalloonEffect() {
       document.head.appendChild(styleTag)
     }
 
-    // Generar de 20 a 30 globos aleatorios
     const generatedBalloons: Balloon[] = Array.from({ length: 25 }).map((_, i) => ({
       id: i,
       left: Math.random() * 90 + 5,
@@ -81,7 +79,6 @@ function BalloonEffect() {
             animationFillMode: 'forwards',
           }}
         >
-          {/* Cuerpo del Globo */}
           <div
             className="rounded-full shadow-lg relative"
             style={{
@@ -90,17 +87,12 @@ function BalloonEffect() {
               backgroundColor: b.color,
             }}
           >
-            {/* Brillo */}
             <div className="absolute top-2 left-2 w-2 h-4 bg-white/40 rounded-full -rotate-45" />
-
-            {/* Nudo */}
             <div
               className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
               style={{ backgroundColor: b.color }}
             />
           </div>
-
-          {/* Hilo */}
           <div className="w-[1px] h-12 bg-slate-400/60" />
         </div>
       ))}
@@ -108,7 +100,6 @@ function BalloonEffect() {
   )
 }
 
-// --- COMPONENTE PRINCIPAL ---
 interface Booking {
   id: string
   child_name: string
@@ -137,10 +128,7 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
   const [loading, setLoading] = useState(true)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
-  // Estado para el visor de pantalla completa (modal)
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null)
-
-  // Referencia al contenedor de la galería
   const galleryRef = useRef<HTMLDivElement>(null)
 
   // Formulario RSVP
@@ -159,7 +147,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
     }
   }, [bookingId])
 
-  // Soporte de navegación por teclado para el visor a pantalla completa
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (fullscreenImageIndex === null) return
@@ -198,7 +185,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
     setLoading(false)
   }
 
-  // Desplazar la galería con los botones < >
   const scrollGallery = (direction: 'prev' | 'next') => {
     if (!galleryRef.current) return
     const container = galleryRef.current
@@ -211,7 +197,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
     }
   }
 
-  // Detectar el índice activo al hacer scroll
   const handleScroll = () => {
     if (!galleryRef.current) return
     const container = galleryRef.current
@@ -222,6 +207,12 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
   const handleRSVP = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!guestName.trim()) return
+
+    // Validación: No permitir que ambos estén en 0
+    if (adultsCount === 0 && childrenCount === 0) {
+      alert('Debes indicar al menos un adulto o un niño asistente.')
+      return
+    }
 
     setIsSubmitting(true)
 
@@ -272,19 +263,16 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
   const salonLogo = booking.profiles?.logo_url
   const salonGallery = booking.profiles?.gallery || []
   
-  // Nombre dinámico y teléfono del Pelotero
   const venueName = booking.profiles?.full_name || booking.profiles?.business_name || booking.profiles?.name || 'Salón de Fiestas'
   const venuePhone = booking.profiles?.phone
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 p-4 flex justify-center items-center relative overflow-hidden">
       
-      {/* Efecto de Globos al abrir la invitación */}
       <BalloonEffect />
 
       <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-6 my-6 border border-white/40 z-10">
         
-        {/* Logo del Pelotero */}
         {salonLogo && (
           <div className="flex justify-center -mb-2">
             <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
@@ -297,7 +285,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
           </div>
         )}
 
-        {/* Encabezado Invitación */}
         <div className="text-center space-y-2">
           <span className="bg-purple-100 text-purple-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full">
             ¡Te invito a mi Cumple!
@@ -312,7 +299,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
           )}
         </div>
 
-        {/* Galería deslizable */}
         {salonGallery.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
@@ -320,7 +306,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
             </p>
 
             <div className="relative group">
-              {/* Botón Izquierda */}
               {salonGallery.length > 1 && currentImageIndex > 0 && (
                 <button
                   type="button"
@@ -332,7 +317,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                 </button>
               )}
 
-              {/* Botón Derecha */}
               {salonGallery.length > 1 && currentImageIndex < salonGallery.length - 1 && (
                 <button
                   type="button"
@@ -344,7 +328,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                 </button>
               )}
 
-              {/* Contenedor con Scroll Horizontal */}
               <div
                 ref={galleryRef}
                 onScroll={handleScroll}
@@ -371,7 +354,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                 ))}
               </div>
 
-              {/* Puntos (Dots) indicadores */}
               {salonGallery.length > 1 && (
                 <div className="flex justify-center gap-1.5 mt-2">
                   {salonGallery.map((_, idx) => (
@@ -390,13 +372,11 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
           </div>
         )}
 
-        {/* Modal Pantalla Completa (Lightbox) */}
         {fullscreenImageIndex !== null && (
           <div
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
             onClick={() => setFullscreenImageIndex(null)}
           >
-            {/* Botón Cerrar */}
             <button
               type="button"
               onClick={() => setFullscreenImageIndex(null)}
@@ -406,12 +386,10 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
               ✕
             </button>
 
-            {/* Contador de Fotos */}
             <div className="absolute top-4 left-4 text-white/80 text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
               {fullscreenImageIndex + 1} / {salonGallery.length}
             </div>
 
-            {/* Botón Anterior Pantalla Completa */}
             {fullscreenImageIndex > 0 && (
               <button
                 type="button"
@@ -426,7 +404,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
               </button>
             )}
 
-            {/* Imagen Principal */}
             <div
               className="relative max-w-4xl max-h-[85vh] w-full flex items-center justify-center overflow-hidden rounded-2xl"
               onClick={(e) => e.stopPropagation()}
@@ -438,7 +415,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
               />
             </div>
 
-            {/* Botón Siguiente Pantalla Completa */}
             {fullscreenImageIndex < salonGallery.length - 1 && (
               <button
                 type="button"
@@ -455,7 +431,6 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
           </div>
         )}
 
-        {/* Tarjeta de Fecha y Horario */}
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-2xl border border-purple-100 space-y-3">
           <div className="flex items-center space-x-3">
             <span className="text-2xl">📅</span>
@@ -565,6 +540,12 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
                 </div>
               </div>
 
+              {adultsCount === 0 && childrenCount === 0 && (
+                <p className="text-xs text-rose-600 font-semibold text-center">
+                  ⚠️ Debe asistir al menos un adulto o un niño.
+                </p>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                   Alergias / Restricciones Alimentarias
@@ -580,7 +561,7 @@ export default function InvitacionInvitadoPage({ params }: { params: Promise<{ i
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (adultsCount === 0 && childrenCount === 0)}
                 className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
               >
                 {isSubmitting ? 'Enviando...' : 'Confirmar Asistencia'}
